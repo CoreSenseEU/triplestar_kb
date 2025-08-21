@@ -1,0 +1,13 @@
+# Query type enum
+uint8 SELECT=0
+uint8 CONSTRUCT=1
+uint8 ASK=2
+uint8 DESCRIBE=3
+uint8 INSERT=4
+uint8 DELETE=5
+
+uint8 query_type
+string query
+---
+bool success
+string result # using a string of the json output for now
