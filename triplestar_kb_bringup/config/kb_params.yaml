@@ -1,13 +1,11 @@
 triplestar_kb:
   ros__parameters:
-    store_path: "/var/lib/triplestar_kb"
-    preload_path: "data"
-    preload_files:
-      - "test.ttl"
-  query_time_subscriptions:
-    robotBatteryLevel:
-      topic: "/battery_level"
-      msg_field: "percentage"
-    robotPosition:
-      topic: "/robot_poase"
-      msg_field: "position"
+    store_path: "/tmp/triplestar_kb"
+    preload_path: "/kas/ws/data"
+    query_time_subscriptions: | # pipe is for the multiline string (json fomat)
+      robotBatteryLevel:
+        topic: "/battery_level"
+        msg_field: "percentage"
+      robotPosition:
+        topic: "/robot_pose"
+        msg_field: "position"
