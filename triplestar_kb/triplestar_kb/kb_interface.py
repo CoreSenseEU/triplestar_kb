@@ -1,7 +1,7 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 
-from pyoxigraph import QueryResultsFormat, RdfFormat, Store
+from pyoxigraph import NamedNode, QueryResultsFormat, RdfFormat, Store
 
 
 class TriplestarKBInterface:
@@ -10,6 +10,11 @@ class TriplestarKBInterface:
         self.logger.info("Initializing TriplestarKBInterface")
         self.store_path = store_path
         self._initialize_store()
+        self.custom_functions: dict[NamedNode, Callable] = {}
+
+    def _add_custom_function(self, function_uri: NamedNode, function: Callable):
+        self.custom_functions[function_uri] = function
+        self.logger.info(f"Added custom function for {function_uri}")
 
     def _initialize_store(self):
         if self.store_path is None:
@@ -18,9 +23,13 @@ class TriplestarKBInterface:
         else:
             try:
                 if self.store_path.exists():
-                    self.logger.info(f"Store path {self.store_path} already exists. Loading existing store.")
+                    self.logger.info(
+                        f"Store path {self.store_path} already exists. Loading existing store."
+                    )
                 else:
-                    self.logger.info(f"Store path {self.store_path} does not exist. Creating new store.")
+                    self.logger.info(
+                        f"Store path {self.store_path} does not exist. Creating new store."
+                    )
                 self.store = Store(self.store_path)
                 self.logger.info(f"Initialized store at {self.store_path}")
                 self.logger.info(f"{self.count_triples()} triples present")
@@ -157,7 +166,7 @@ class TriplestarKBInterface:
         self.logger.info(f"Executing query: {query}")
 
         try:
-            result = self.store.query(query)
+            result = self.store.query(query, custom_functions=self.custom_functions)
             result_json = result.serialize(format=QueryResultsFormat.JSON)
             return str(result_json)
         except Exception as e:
