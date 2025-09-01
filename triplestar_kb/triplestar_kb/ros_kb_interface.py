@@ -1,12 +1,20 @@
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
 import rclpy
 import rclpy.executors
+import yaml
+from pyoxigraph import NamedNode
 from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
 from triplestar_kb_msgs.srv import Query
 
 from .kb_interface import TriplestarKBInterface
+from .msg_to_rdf import ros_msg_to_literal
+from .query_time_subscriber import QueryTimeSubscriber
+
+XSD = "http://www.w3.org/2001/XMLSchema#"
+EX = "http://example.org/"
 
 
 class RosTriplestarKBInterface(LifecycleNode):
@@ -19,19 +27,12 @@ class RosTriplestarKBInterface(LifecycleNode):
 
     def __init__(self):
         super().__init__("triplestar_kb")
+        self.query_time_subs = {}  # these will be filled with values from the config file
 
-        self.declare_parameter(
-            "store_path",
-            rclpy.Parameter.Type.STRING,
-        )
-        self.declare_parameter(
-            "preload_path",
-            rclpy.Parameter.Type.STRING,
-        )
-        self.declare_parameter(
-            "preload_files",
-            rclpy.Parameter.Type.STRING_ARRAY,
-        )
+        self.declare_parameter("store_path", rclpy.Parameter.Type.STRING)
+        self.declare_parameter("preload_path", rclpy.Parameter.Type.STRING)
+        self.declare_parameter("preload_files", rclpy.Parameter.Type.STRING_ARRAY)
+        self.declare_parameter("query_time_subscriptions")
 
         self.kb: Optional[TriplestarKBInterface] = None
 
@@ -50,6 +51,12 @@ class RosTriplestarKBInterface(LifecycleNode):
         if not self._preload_files():
             self.get_logger().error("Failed to preload files")
             return TransitionCallbackReturn.ERROR
+
+        # Initialise the subscribers for query-time data
+        self._create_query_time_subscriptions()
+        for name, sub in self.query_time_subs.items():
+            func = partial(lambda s: ros_msg_to_literal(s.get_latest()), sub)
+            self.kb._add_custom_function(NamedNode(EX + name), func)
 
         self.get_logger().info("KB node configured successfully")
         return TransitionCallbackReturn.SUCCESS
@@ -100,6 +107,22 @@ class RosTriplestarKBInterface(LifecycleNode):
         self.get_logger().info("Shutting down KB node...")
         return TransitionCallbackReturn.SUCCESS
 
+    def _create_query_time_subscriptions(self):
+        query_time_subscriptions_param = yaml.safe_load(
+            self.get_parameter("query_time_subscriptions").value
+        )
+        self.get_logger().info(
+            f"recieved query time subscriptions: {query_time_subscriptions_param}"
+        )
+
+        for name, values in query_time_subscriptions_param.items():
+            self.get_logger().info(
+                f"Creating query time subscription for {name} on topic {values['topic']}"
+            )
+            self.query_time_subs[name] = QueryTimeSubscriber(
+                node=self, topic_name=values["topic"]
+            )
+
     def _preload_files(self) -> bool:
         """Preload files from the specified directory."""
         preload_path_param = self.get_parameter("preload_path").value
@@ -120,7 +143,9 @@ class RosTriplestarKBInterface(LifecycleNode):
 
         self.get_logger().info(f"Preloading files from {preload_path}")
 
-        file_paths = [f for f in preload_path.iterdir() if f.is_file() and f.suffix == ".ttl"]
+        file_paths = [
+            f for f in preload_path.iterdir() if f.is_file() and f.suffix == ".ttl"
+        ]
 
         if not file_paths:
             self.get_logger().warn(f"No .ttl files found in {preload_path}")
@@ -131,11 +156,15 @@ class RosTriplestarKBInterface(LifecycleNode):
         loaded_count = self.kb.load_files(file_paths)
 
         if loaded_count == 0:
-            self.get_logger().warn(f"No files were successfully loaded from {preload_path}")
+            self.get_logger().warn(
+                f"No files were successfully loaded from {preload_path}"
+            )
             return False
 
         if preload_path.exists():
-            self.get_logger().info(f"Successfully preloaded {loaded_count} files from {preload_path}")
+            self.get_logger().info(
+                f"Successfully preloaded {loaded_count} files from {preload_path}"
+            )
         return True
 
     def query_callback(
