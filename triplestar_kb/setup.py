@@ -1,6 +1,3 @@
-import os
-from glob import glob
-
 from setuptools import find_packages, setup
 
 package_name = "triplestar_kb"
@@ -12,8 +9,6 @@ setup(
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
-        (os.path.join("share", package_name, "launch"), glob("launch/*launch.*")),
-        (os.path.join("share", package_name, "config"), glob("config/*yaml")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,
@@ -24,7 +19,6 @@ setup(
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "lines = triplestar_kb.lines:main",
             "kb_node = triplestar_kb.kb_node:main",
         ],
     },
