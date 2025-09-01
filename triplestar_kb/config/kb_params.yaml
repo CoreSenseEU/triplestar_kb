@@ -1,6 +1,0 @@
-triplestar_kb:
-  ros__parameters:
-    store_path: "/var/lib/triplestar_kb"
-    preload_path: "data"
-    preload_files:
-      - "test.ttl"

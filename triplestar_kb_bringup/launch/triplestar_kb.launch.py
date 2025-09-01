@@ -22,6 +22,13 @@ def generate_launch_description():
         [EnvironmentVariable("HOME"), ".local", "share", "triplestar_kb"]
     )
 
+    log_level_arg = DeclareLaunchArgument(
+        "log-level",
+        default_value="info",
+        description="Logging level",
+    )
+    log_level = LaunchConfiguration("log-level", default="info")
+
     store_path_arg = DeclareLaunchArgument(
         "store_path",
         default_value=default_store_path,
@@ -53,6 +60,7 @@ def generate_launch_description():
                 "preload_path": preload_path,
             }
         ],
+        arguments=["--ros-args", "--log-level", ["triplestar_kb:=", log_level]],
     )
 
     triplestar_kb_node_config_event = EmitEvent(

@@ -1,0 +1,13 @@
+triplestar_kb:
+  ros__parameters:
+    store_path: "/var/lib/triplestar_kb"
+    preload_path: "data"
+    preload_files:
+      - "test.ttl"
+  query_time_subscriptions:
+    robotBatteryLevel:
+      topic: "/battery_level"
+      msg_field: "percentage"
+    robotPosition:
+      topic: "/robot_poase"
+      msg_field: "position"
