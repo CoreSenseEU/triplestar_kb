@@ -10,12 +10,30 @@ from geometry_msgs.msg import (
     PolygonInstanceStamped,
     PolygonStamped,
     Pose,
+    Vector3,
+    Vector3Stamped,
 )
 from icecream import ic
 from pyoxigraph import Literal as RdfLiteral
 from pyoxigraph import NamedNode
 from shapely import Point as ShapelyPoint
 from shapely import Polygon as ShapelyPolygon
+from std_msgs.msg import (
+    Bool,
+    Byte,
+    Char,
+    Float32,
+    Float64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    String,
+    UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
+)
 
 GEO = "http://www.opengis.net/ont/geosparql#"
 XSD = "http://www.w3.org/2001/XMLSchema#"
@@ -61,6 +79,12 @@ def convert_pose(pose) -> RdfLiteral:
     return RdfLiteral(shapely_point.wkt, datatype=NamedNode(GEO + "wktLiteral"))
 
 
+@registry.register(Vector3, Vector3Stamped)
+def convert_vector3(vector) -> RdfLiteral:
+    shapely_point = ShapelyPoint(vector.x, vector.y)
+    return RdfLiteral(shapely_point.wkt, datatype=NamedNode(GEO + "wktLiteral"))
+
+
 @registry.register(Polygon, PolygonStamped, PolygonInstance, PolygonInstanceStamped)
 def convert_polygon(polygon) -> RdfLiteral:
     if hasattr(polygon, "header"):
@@ -85,10 +109,18 @@ def convert_time(ros_time: ROSTime) -> RdfLiteral:
     )
 
 
+# Built in datatypes
 @registry.register(float)
 def convert_float(value: float) -> RdfLiteral:
     datatype = NamedNode(XSD + "float")
     return RdfLiteral(str(value), datatype=datatype)
+
+
+# must come before int, because bool is a subclass of int
+@registry.register(bool)
+def convert_bool(value: bool) -> RdfLiteral:
+    datatype = NamedNode(XSD + "boolean")
+    return RdfLiteral(str(value).lower(), datatype=datatype)
 
 
 @registry.register(int)
@@ -97,16 +129,30 @@ def convert_int(value: int) -> RdfLiteral:
     return RdfLiteral(str(value), datatype=datatype)
 
 
-@registry.register(bool)
-def convert_bool(value: bool) -> RdfLiteral:
-    datatype = NamedNode(XSD + "boolean")
-    return RdfLiteral(str(value).lower(), datatype=datatype)
-
-
 @registry.register(str)
 def convert_str(value: str) -> RdfLiteral:
     datatype = NamedNode(XSD + "string")
     return RdfLiteral(value, datatype=datatype)
+
+
+@registry.register(
+    Float32,
+    Float64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
+    Char,
+    Byte,
+    Bool,
+    String,
+)
+def convert_std_msg(value) -> RdfLiteral | None:
+    return registry.convert(value.data)
 
 
 def ros_msg_to_literal(msg: Any, field: Optional[str] = None) -> Optional[RdfLiteral]:
@@ -118,3 +164,7 @@ def ros_msg_to_literal(msg: Any, field: Optional[str] = None) -> Optional[RdfLit
     else:
         value = msg
     return registry.convert(value)
+
+
+bool = Bool()
+ic(bool)
