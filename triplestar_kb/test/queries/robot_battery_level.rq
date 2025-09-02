@@ -1,5 +1,0 @@
-PREFIX ex: <http://example.org/>
-SELECT ?bl WHERE {
-  BIND(ex:robotBatteryLevel() AS ?bl) .
-  FILTER(?bl > 0.2)
-}
