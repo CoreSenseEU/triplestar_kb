@@ -12,6 +12,7 @@ To facilitate the integration of these datatypes into the kb, which is based on 
 Some data, such as room geometries or class hirarchies, will be quite static in your KB, while other data, such as the robots own location or battery level, will change frequently.
 For this requently-chaning information it is possible to add _query_time_subscribers_ to the kb node, which keep track of the messages published on a certain topic and expose them to oxigraph's underlying SPARQL evaluator to be run at query time.
 As an example:
+
 ```sparql
 PREFIX ex: <http://example.org/>
 SELECT ?bl WHERE {
@@ -20,6 +21,12 @@ SELECT ?bl WHERE {
 }
 ```
 
+This query contains the special function `robotBatteryLevel`, which accesses the latest message on a certain topic at query time.
+These query time subscribers can be added by modifying the config file.
+
+## Query-time TF subscribers
+
+ROS(2) makes use of the `tf2` library to publish transforms between coordinate frames
 
 
 
