@@ -13,12 +13,8 @@ To facilitate the integration of these datatypes into the kb, which is based on 
 | `geometry_msgs/Point`, `Point32`, `PointStamped`                              | `shapely.geometry.Point`| `geo:wktLiteral`                          |
 | `geometry_msgs/Pose`                                                          | `shapely.geometry.Point`| `geo:wktLiteral`                          |
 | `geometry_msgs/Vector3`, `Vector3Stamped`                                     | `shapely.geometry.Point`| `geo:wktLiteral`                          |
-| `geometry_msgs/Polygon`, `PolygonStamped`, `PolygonInstance`, `PolygonInstanceStamped` | `shapely.geometry.Polygon` | `geo:wktLiteral`                      |
+| `geometry_msgs/Polygon`, `PolygonStamped`, `PolygonInstance`, `PolygonInstanceStamped` | `shapely.geometry.Polygon` | `geo:wktLiteral`              |
 | `builtin_interfaces/Time`                                                     | `datetime.datetime`     | `xsd:dateTime`                            |
-| `float`                                                                       | `float`                 | `xsd:float`                               |
-| `bool`                                                                        | `bool`                  | `xsd:boolean`                             |
-| `int`                                                                         | `int`                   | `xsd:integer`                             |
-| `str`                                                                         | `str`                   | `xsd:string`                              |
 | `std_msgs/Float32`, `Float64`                                                 | `float`                 | `xsd:float`                               |
 | `std_msgs/Int8`, `Int16`, `Int32`, `Int64`                                    | `int`                   | `xsd:integer`                             |
 | `std_msgs/UInt8`, `UInt16`, `UInt32`, `UInt64`                                | `int`                   | `xsd:integer`                             |
