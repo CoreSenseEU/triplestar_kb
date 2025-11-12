@@ -104,7 +104,8 @@ def convert_time(ros_time: ROSTime) -> RdfLiteral:
 
     dt = datetime.fromtimestamp(ros_time.sec + ros_time.nanosec / 1e9, tz=timezone.utc)
     return RdfLiteral(
-        dt.isoformat().replace("+00:00", "Z"), datatype=NamedNode(XSD + "dateTime")
+        dt.isoformat().replace("+00:00", "Z"),
+        datatype=NamedNode(XSD + "dateTime"),
     )
 
 
@@ -161,4 +162,5 @@ def ros_msg_to_literal(msg: Any, field: Optional[str] = None) -> Optional[RdfLit
             return None
     else:
         value = msg
+
     return registry.convert(value)

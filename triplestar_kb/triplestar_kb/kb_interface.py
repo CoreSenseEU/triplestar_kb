@@ -34,9 +34,7 @@ class TriplestarKBInterface:
                 self.logger.info(f"Initialized store at {self.store_path}")
                 self.logger.info(f"{self.count_triples()} triples present")
             except Exception as e:
-                self.logger.error(
-                    f"Failed to initialize store at {self.store_path}: {e}"
-                )
+                self.logger.error(f"Failed to initialize store at {self.store_path}: {e}")
                 raise
 
     def load_file(self, file_path: Path, format: RdfFormat = RdfFormat.TURTLE) -> bool:
@@ -65,9 +63,7 @@ class TriplestarKBInterface:
             self.logger.error(f"Failed to load file {file_path}: {e}")
             return False
 
-    def load_files(
-        self, file_paths: List[Path], format: RdfFormat = RdfFormat.TURTLE
-    ) -> int:
+    def load_files(self, file_paths: List[Path], format: RdfFormat = RdfFormat.TURTLE) -> int:
         """
         Load multiple RDF files into the store.
 
@@ -85,9 +81,7 @@ class TriplestarKBInterface:
                 loaded_count += 1
             else:
                 failed_count += 1
-        self.logger.info(
-            f"Loaded {loaded_count} files, failed to load {failed_count} files"
-        )
+        self.logger.info(f"Loaded {loaded_count} files, failed to load {failed_count} files")
         return loaded_count
 
     def count_triples(self) -> int:

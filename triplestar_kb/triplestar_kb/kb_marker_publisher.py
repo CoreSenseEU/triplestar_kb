@@ -16,9 +16,7 @@ class KBPolygonViz(Node):
         super().__init__("kb_polygon_viz")
 
         self.publisher = self.create_publisher(MarkerArray, "kb_markers", 10)
-        self.timer = self.create_timer(
-            1.0, self.update_markers_periodically
-        )  # 1 Hz update
+        self.timer = self.create_timer(1.0, self.update_markers_periodically)  # 1 Hz update
 
         self.get_logger().info("KB Polygon Visualizer node started")
 
@@ -93,9 +91,7 @@ class KBPolygonViz(Node):
                 text_marker.pose.orientation.w = 1.0  # default pose
 
                 # Use label if it exists, otherwise use the URI
-                text_marker.text = row.get("label", {}).get(
-                    "value", row["room"]["value"]
-                )
+                text_marker.text = row.get("label", {}).get("value", row["room"]["value"])
 
                 marker_array.markers.append(text_marker)
 
