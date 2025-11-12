@@ -19,7 +19,7 @@ class BaseQueryTimeSubscriber:
         self._max_age_sec = max_age_sec
         self._logger = node.get_logger().get_child(self.__class__.__name__)
 
-    def get_latest(self) -> Optional[Any]:
+    def get_latest(self, *args, **kwargs) -> Optional[Any]:
         """return the latest value if available and fresh, else None."""
         raise NotImplementedError("get_latest must be implemented by subclasses")
 
@@ -40,16 +40,10 @@ class QueryTimeSubscriber(BaseQueryTimeSubscriber):
         self._msg_field_name = msg_field_name
 
         self.wait_for_topic()
-        msg_type = (
-            get_msg_class(node, self._topic_name) if msg_type is None else msg_type
-        )
+        msg_type = get_msg_class(node, self._topic_name) if msg_type is None else msg_type
         if msg_type is None:
-            self._logger.error(
-                f"Unable to determine message class for topic: {self._topic_name}"
-            )
-            raise RuntimeError(
-                f"Message type could not be determined for topic {self._topic_name}"
-            )
+            self._logger.error(f"Unable to determine message class for topic: {self._topic_name}")
+            raise RuntimeError(f"Message type could not be determined for topic {self._topic_name}")
 
         if self._msg_field_name is not None:
             if not hasattr(msg_type, self._msg_field_name):
@@ -78,9 +72,7 @@ class QueryTimeSubscriber(BaseQueryTimeSubscriber):
             if time.time() - start_time > timeout_sec:
                 self._logger.error(f"Timeout waiting for topic {self._topic_name}.")
                 return False
-            self._logger.info(
-                f"Waiting for topic {self._topic_name} to become available..."
-            )
+            self._logger.info(f"Waiting for topic {self._topic_name} to become available...")
             time.sleep(poll_interval)
         return False
 
@@ -93,7 +85,7 @@ class QueryTimeSubscriber(BaseQueryTimeSubscriber):
         else:
             self._latest_time = time.time()
 
-    def get_latest(self):
+    def get_latest(self, *args, **kwargs):
         self._logger.debug("get_latest called")
         if not self._latest_msg or not self._latest_time:
             return None
@@ -112,34 +104,27 @@ class QueryTimeTFSubscriber(BaseQueryTimeSubscriber):
     def __init__(
         self,
         node: Node | LifecycleNode,
-        from_frame: str,
-        to_frame: str,
         max_age_sec: float = 2.0,
     ):
         super().__init__(node, max_age_sec)
-        self._from_frame = from_frame
-        self._to_frame = to_frame
 
         self._buffer = tf2_ros.Buffer()
         self._listener = tf2_ros.TransformListener(self._buffer, node)
-        self._latest_time: Optional[float] = None
 
-        self._logger.info(
-            f"Initialized TF subscriber:{self._from_frame} -> {self._to_frame}"
-        )
+        self._logger.info("Initialized TF subscriber with frame buffer")
 
-    def get_latest(self):
-        self._logger.info("get_latest called for TF")
+    def get_latest(self, from_frame: str, to_frame: str):
+        self._logger.debug(f"get_latest called for TF: {from_frame} -> {to_frame}")
         try:
             transform = self._buffer.lookup_transform(
-                self._to_frame,
-                self._from_frame,
+                to_frame,
+                from_frame,
                 Time(),
                 timeout=rclpy.duration.Duration(seconds=1.0),  # type: ignore
             )
-            self._logger.info(f"TF transform received: {transform}")
+            self._logger.debug(f"TF transform received: {transform}")
             return transform.transform.translation
 
         except Exception as e:
-            self._logger.warn(f"TF lookup failed: {e}")
+            self._logger.warn(f"TF lookup failed for {from_frame} -> {to_frame}: {e}")
             return None
