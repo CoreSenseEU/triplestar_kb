@@ -6,7 +6,9 @@ from pyoxigraph import NamedNode, QueryResultsFormat, RdfFormat, Store
 
 class TriplestarKBInterface:
     def __init__(self, store_path: Optional[Path] = None, logger=None):
-        self.logger = logger.get_child("KBInterface") if logger else logger
+        if logger is None:
+            raise ValueError("logger must be provided")
+        self.logger = logger.get_child("KBInterface")
         self.logger.info("Initializing TriplestarKBInterface")
         self.store_path = store_path
         self._initialize_store()
@@ -96,7 +98,11 @@ class TriplestarKBInterface:
 
         try:
             query = "SELECT (COUNT(*) AS ?count) WHERE {?s ?p ?o}"
-            result = next(self.store.query(query))
+            query_result = self.store.query(query)
+            if hasattr(query_result, "__next__"):
+                result = next(query_result)
+            else:
+                raise RuntimeError("Query result does not support iteration")
             return result["count"].value
         except Exception:
             return 0
@@ -161,8 +167,8 @@ class TriplestarKBInterface:
 
         try:
             result = self.store.query(query, custom_functions=self.custom_functions)
-            result_json = result.serialize(format=QueryResultsFormat.JSON)
-            return result_json.decode("utf-8")
+            result_json = result.serialize(format=QueryResultsFormat.JSON)  # type:ignore
+            return result_json.decode("utf-8")  # type:ignore
         except Exception as e:
             self.logger.error(f"Query execution failed: {e}")
 
