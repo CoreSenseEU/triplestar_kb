@@ -13,9 +13,9 @@ from rclpy.lifecycle import (
 )
 from triplestar_kb_msgs.srv import Query
 
-from .kb_interface import TriplestarKBInterface
-from .msg_to_rdf import ros_msg_to_literal
-from .query_time_subscriber import QueryTimeSubscriber, QueryTimeTFSubscriber
+from triplestar_kb.kb_interface import TriplestarKBInterface
+from triplestar_kb.msg_to_rdf import ros_msg_to_literal
+from triplestar_kb.query_time_subscriber import QueryTimeSubscriber, QueryTimeTFSubscriber
 
 XSD = "http://www.w3.org/2001/XMLSchema#"
 EX = "http://example.org/"
@@ -142,7 +142,8 @@ class RosTriplestarKBInterface(LifecycleNode):
         # Register custom functions for topic subscribers
         for name, sub in self.query_time_subs.items():
             func = partial(lambda s: ros_msg_to_literal(s.get_latest()), sub)
-            self.kb._add_custom_function(NamedNode(EX + name), func)
+            if self.kb is not None:
+                self.kb._add_custom_function(NamedNode(EX + name), func)
 
         # Register custom functions for TF subscriptions
         for name, values in query_time_tf_subscriptions.items():
@@ -154,7 +155,8 @@ class RosTriplestarKBInterface(LifecycleNode):
                 from_frame,
                 to_frame,
             )
-            self.kb._add_custom_function(NamedNode(EX + name), func)
+            if self.kb is not None:
+                self.kb._add_custom_function(NamedNode(EX + name), func)
 
     def _load_subscription_config(self, param_name: str, empty_msg: str) -> dict:
         """Load subscription configuration from parameter."""
@@ -174,6 +176,10 @@ class RosTriplestarKBInterface(LifecycleNode):
 
     def _preload_files(self) -> bool:
         """Preload TTL files from the specified directory."""
+        if self.kb is None:
+            self.get_logger().error("KB interface not initialized")
+            return False
+
         preload_path_param = self.get_parameter("preload_path").value
 
         if not preload_path_param:
@@ -214,6 +220,12 @@ class RosTriplestarKBInterface(LifecycleNode):
     def query_callback(self, request: Query.Request, response: Query.Response) -> Query.Response:
         """Handle a query request."""
         self.get_logger().debug(f"Received query request: {request}")
+
+        if self.kb is None:
+            self.get_logger().error("KB interface not initialized")
+            response.success = False
+            response.result = ""
+            return response
 
         response.result = self.kb.query_json(request.query)
         response.success = response.result != ""

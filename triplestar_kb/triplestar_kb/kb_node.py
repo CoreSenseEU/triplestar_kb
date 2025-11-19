@@ -3,7 +3,7 @@
 import rclpy
 import rclpy.executors
 
-from .ros_kb_interface import RosTriplestarKBInterface
+from triplestar_kb.ros_kb_interface import RosTriplestarKBInterface
 
 # Constants
 DATA_FOLDER_NAME = "data"
