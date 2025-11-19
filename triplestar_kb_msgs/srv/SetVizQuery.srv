@@ -1,0 +1,6 @@
+string query
+float64 update_rate
+bool auto_refresh
+---
+bool success
+string message
