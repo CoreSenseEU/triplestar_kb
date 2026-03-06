@@ -64,8 +64,7 @@ class RosTriplestarKBInterface(LifecycleNode):
         subscriber_config_path = Path(self.get_parameter('subscriber_config_file').value)
         subscriber_config = yaml.safe_load(subscriber_config_path.read_text())
 
-        self.subscriber_manager = SubscriberManager(self, config=subscriber_config)
-        self.subscriber_manager.register_custom_functions(self.kb)
+        self.subscriber_manager = SubscriberManager(self, config=subscriber_config, kb=self.kb)
 
         self.get_logger().info('KB node configured successfully')
         return TransitionCallbackReturn.SUCCESS
@@ -124,27 +123,20 @@ class RosTriplestarKBInterface(LifecycleNode):
             self.get_logger().error('KB interface not initialized')
             return False
 
-        preload_dir_value = self.get_parameter('preload_dir').value
-        if not preload_dir_value:
-            self.get_logger().warn('Preload dir parameter is empty, skipping preload')
+        # Strip the [''] placeholder ROS2 uses as the default for string array parameters.
+        preload_files = [f for f in self.get_parameter('preload_files').value if f]
+        if not preload_files:
+            self.get_logger().info('No preload files configured, skipping preload')
             return True
 
-        preload_dir = Path(preload_dir_value)
-
-        if not preload_dir.exists() or not preload_dir.is_dir():
-            self.get_logger().warn(
-                f'Preload path {preload_dir} does not exist or is not a directory'
-            )
+        preload_dir = Path(self.get_parameter('preload_dir').value)
+        if not preload_dir.is_dir():
+            self.get_logger().warn(f'Preload directory {preload_dir} does not exist')
             return False
-
-        preload_files_value = self.get_parameter('preload_files').value
-        if not preload_files_value:
-            self.get_logger().warn('Preload files parameter is empty, skipping preload')
-            return True
 
         file_paths = [
             preload_dir / name
-            for name in preload_files_value
+            for name in preload_files
             if (preload_dir / name).is_file() and (preload_dir / name).suffix == '.ttl'
         ]
 
