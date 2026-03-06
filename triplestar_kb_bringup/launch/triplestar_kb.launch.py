@@ -90,7 +90,7 @@ def generate_launch_description():
             triplestar_kb_node,
             triplestar_kb_node_config_event,
             triplestar_kb_node_activate_event,
-            start_marker_publisher,
+            # start_marker_publisher,
             viz_node,
         ]
     )
