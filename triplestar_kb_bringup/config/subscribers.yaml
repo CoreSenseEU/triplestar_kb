@@ -1,0 +1,20 @@
+insertion_subscribers:
+    detections:
+        topic: "/yolo/detections"
+        template: "Detection.sparql.tmpl"
+
+query_time_topics:
+    robotBatteryLevel:
+        topic: "/battery_level"
+    robotFootprint:
+        topic: "/polygons"
+    robotTime:
+        topic: "/time"
+
+query_time_tf:
+    robotPose:
+        from_frame: "base_link"
+        to_frame: "map"
+    gripperPose:
+        from_frame: "gripper"
+        to_frame: "map"

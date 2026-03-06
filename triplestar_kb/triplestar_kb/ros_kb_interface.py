@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import Optional
@@ -22,29 +21,9 @@ XSD = 'http://www.w3.org/2001/XMLSchema#'
 EX = 'http://example.org/'
 
 
-@dataclass
-class KBConfig:
-    """
-    Configuration dataclass for KB parameters with defaults.
-
-    This dataclass centralizes all ROS parameters for the knowledge base node.
-    Default values are automatically used when parameters are not specified in
-    the YAML config file.
-    """
-
-    store_path: str = '/tmp/triplestar_kb'
-    preload_path: str = ''
-    preload_files: list = field(default_factory=list)
-    query_time_subscriptions: str = ''
-    query_time_tf_subscriptions: str = ''
-
-
 class RosTriplestarKBInterface(LifecycleNode):
     """
     A ROS2 lifecycle node for managing a triplestar knowledge base using pyoxigraph.
-
-    This node handles RDF data storage and retrieval with support for preloading
-    Turtle (.ttl) files during configuration.
     """
 
     def __init__(self):
@@ -61,45 +40,33 @@ class RosTriplestarKBInterface(LifecycleNode):
         self.get_logger().info('Triplestar KB node created')
 
     def _declare_parameters(self):
-        """Declare all node parameters automatically from KBConfig dataclass."""
-        defaults = KBConfig()
+        """Declare all node parameters with their default values."""
 
-        # Automatically declare all parameters from the dataclass
-        for field_name, field_value in defaults.__dict__.items():
-            self.declare_parameter(field_name, field_value)
-            self.get_logger().debug(
-                f"Declared parameter '{field_name}' with default: {field_value}"
-            )
+        # bringup package
+        bringup_share = get_package_share_directory('triplestar_kb_bringup')
 
-        # This approach automatically picks up new fields added to KBConfig
-        # No need to manually add declare_parameter calls for each new config variable!
-
-    def _load_config(self) -> KBConfig:
-        """Load all parameters from ROS into a KBConfig object."""
-        config = KBConfig()
-
-        for field_name in config.__dict__.keys():
-            try:
-                param_value = self.get_parameter(field_name).value
-                setattr(config, field_name, param_value)
-            except Exception as e:
-                self.get_logger().warning(
-                    f"Failed to get parameter '{field_name}', using default. Error: {e}"
-                )
-
-        return config
+        self.declare_parameter('store_path', str(Path(bringup_share) / 'store'))
+        self.declare_parameter('templates_dir', str(Path(bringup_share) / 'templates'))
+        self.declare_parameter('queries_dir', str(Path(bringup_share) / 'queries'))
+        self.declare_parameter('preload_dir', str(Path(bringup_share) / 'preload'))
+        self.declare_parameter(
+            'subscriber_config_file', str(Path(bringup_share) / 'config' / 'subscriber_config.yaml')
+        )
+        self.declare_parameter(
+            'preload_files',
+            [''],
+            descriptor=rclpy.node.ParameterDescriptor(type=rclpy.Parameter.Type.STRING_ARRAY),
+        )
 
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
         """Initialize the RDF store and load preload files."""
         self.get_logger().info('Configuring KB node...')
 
-        # Load all configuration parameters into a config object
-        self.config = self._load_config()
-
         # Initialize the kb interface
         self.kb = TriplestarKBInterface(
-            store_path=Path(self.config.store_path), logger=self.get_logger()
+            store_path=Path(self.get_parameter('store_path').value), logger=self.get_logger()
         )
+        self.get_logger().info(f'Using store path: {self.kb.store_path}')
 
         # Load preload files
         if not self._preload_files():
@@ -221,27 +188,34 @@ class RosTriplestarKBInterface(LifecycleNode):
             self.get_logger().error('KB interface not initialized')
             return False
 
-        if not self.config.preload_path:
-            self.get_logger().warn('Preload path parameter is empty, skipping preload')
+        preload_dir_value = self.get_parameter('preload_dir').value
+        if not preload_dir_value:
+            self.get_logger().warn('Preload dir parameter is empty, skipping preload')
             return True
 
-        preload_path = Path(self.config.preload_path)
+        preload_dir = Path(preload_dir_value)
 
-        if not preload_path.exists():
-            self.get_logger().warn(f'Preload path {preload_path} does not exist')
+        if not preload_dir.exists() or not preload_dir.is_dir():
+            self.get_logger().warn(
+                f'Preload path {preload_dir} does not exist or is not a directory'
+            )
             return False
 
-        if not preload_path.is_dir():
-            self.get_logger().warn(f'Preload path {preload_path} is not a directory')
-            return False
+        preload_files_value = self.get_parameter('preload_files').value
+        if not preload_files_value:
+            self.get_logger().warn('Preload files parameter is empty, skipping preload')
+            return True
 
-        self.get_logger().info(f'Preloading files from {preload_path}')
+        self.get_logger().info(f'Preloading files from {preload_dir}')
 
-        # Find all .ttl files
-        file_paths = [f for f in preload_path.iterdir() if f.is_file() and f.suffix == '.ttl']
+        # Join preload_dir with each file in preload_files
+        file_paths = [preload_dir / file_name for file_name in preload_files_value]
+
+        # Filter to only existing .ttl files
+        file_paths = [f for f in file_paths if f.exists() and f.is_file() and f.suffix == '.ttl']
 
         if not file_paths:
-            self.get_logger().warn(f'No .ttl files found in {preload_path}')
+            self.get_logger().warn(f'No valid .ttl files found from preload_files in {preload_dir}')
             return False
 
         self.get_logger().info(f'Found {len(file_paths)} .ttl files to preload')
@@ -250,10 +224,10 @@ class RosTriplestarKBInterface(LifecycleNode):
         loaded_count = self.kb.load_files(file_paths)
 
         if loaded_count == 0:
-            self.get_logger().warn(f'No files were successfully loaded from {preload_path}')
+            self.get_logger().warn(f'No files were successfully loaded from {preload_dir}')
             return False
 
-        self.get_logger().info(f'Successfully preloaded {loaded_count} files from {preload_path}')
+        self.get_logger().info(f'Successfully preloaded {loaded_count} files from {preload_dir}')
         return True
 
     def query_callback(self, request: Query.Request, response: Query.Response) -> Query.Response:

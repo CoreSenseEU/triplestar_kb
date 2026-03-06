@@ -1,18 +1,15 @@
 triplestar_kb:
-  ros__parameters:
-    store_path: "/tmp/triplestar_kb"
-    preload_path: "/kas/ws/data"
-    # query_time_subscriptions: | # pipe is for the multiline string (json fomat)
-    #   robotBatteryLevel:
-    #     topic: "/battery_level"
-    #   robotFootprint:
-    #     topic: "/polygons"
-    #   robotTime:
-    #     topic: "/time"
-    query_time_tf_subscriptions: |
-      robotPose:
-        from_frame: base_link
-        to_frame: map
-      gripperPose:
-        from_frame: gripper
-        to_frame: map
+    ros__parameters:
+        store_path: "/tmp/triplestar_kb"
+
+        # # set up paths
+        # templates_dir: "/path_to/templates_dir"
+        # queries_dir: "/path/to/queries_dir"
+        # preload_dir: "/path/to/preload_dir"
+
+        # # subscriber configuration
+        # subscriber_config_file: "/path/to/custom/subscribers.yaml"
+
+        preload_files:
+            - floorplan.ttl
+            - annotated_data.ttl
