@@ -18,7 +18,10 @@ def main(args=None):
     try:
         executor.spin()
     except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        pass
+    finally:
         node.destroy_node()
+        rclpy.shutdown()
 
 
 if __name__ == '__main__':
