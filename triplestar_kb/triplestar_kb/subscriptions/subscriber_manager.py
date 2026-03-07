@@ -1,3 +1,5 @@
+from typing import Callable
+
 import tf2_ros
 from jinja2 import Environment, FileSystemLoader
 from pyoxigraph import NamedNode
@@ -34,9 +36,13 @@ class SubscriberManager:
         env = Environment(loader=FileSystemLoader(templates_dir))
         env.filters['rdf'] = _rdf_filter
 
-        self._load_config(config, kb, env)
+        update_fn = self._make_update_fn(kb)
 
-        # register the query-time data subscriptions for use in sparql queries
+        self._load_topic_query_subs(config.get('query_time_topic_subscribers', {}))
+        self._load_tf_query_subs(config.get('query_time_tf_subscribers', {}))
+        self._load_insertion_subs(config.get('insertion_subscribers', {}), env, update_fn)
+
+        # Register query-time subscribers as custom SPARQL functions
         all_query_subs = {**self.topic_query_subs, **self.tf_query_subs}
         for name, sub in all_query_subs.items():
             kb._add_custom_function(
@@ -45,30 +51,79 @@ class SubscriberManager:
             )
 
         self.logger.info(
-            f'SubscriberManager initialized — query-time: {list(all_query_subs.keys())}, '
+            f'SubscriberManager initialized — '
+            f'query-time: {list(all_query_subs.keys())}, '
             f'insertion: {list(self.insertion_subs.keys())}'
         )
 
-    def _load_config(self, config: dict, kb: TriplestarKBInterface, env: Environment):
-        for name, sub_cfg in config.get('query_time_topic_subscribers', {}).items():
-            try:
-                self.topic_query_subs[name] = QueryTimeTopicSubscriber(self.node, sub_cfg)
-            except RuntimeError as e:
-                self.logger.error(f'Failed to create topic subscriber "{name}": {e}')
-
-        for name, sub_cfg in config.get('query_time_tf_subscribers', {}).items():
-            self.tf_query_subs[name] = QueryTimeTFSubscriber(
-                self.node, sub_cfg, self._buffer, self._listener
-            )
-
+    def _make_update_fn(self, kb: TriplestarKBInterface) -> Callable[[str], None]:
         def update_fn(sparql: str) -> None:
             if kb.store is None:
                 self.logger.error('KB store is not initialized, dropping insertion')
                 return
             kb.store.update(sparql)
 
-        for name, sub_cfg in config.get('insertion_subscribers', {}).items():
+        return update_fn
+
+    def _load_topic_query_subs(self, config: dict) -> None:
+        for name, sub_cfg in config.items():
             try:
-                self.insertion_subs[name] = InsertionSubscriber(self.node, sub_cfg, env, update_fn)
-            except RuntimeError as e:
+                topic = self._require(
+                    sub_cfg, 'topic', context=f'query_time_topic_subscribers.{name}'
+                )
+                self.topic_query_subs[name] = QueryTimeTopicSubscriber(
+                    node=self.node,
+                    topic=topic,
+                    max_age_sec=sub_cfg.get('max_age_sec', 2.0),
+                    msg_field_name=sub_cfg.get('msg_field_name'),
+                )
+            except (KeyError, RuntimeError) as e:
+                self.logger.error(f'Failed to create topic query subscriber "{name}": {e}')
+
+    def _load_tf_query_subs(self, config: dict) -> None:
+        for name, sub_cfg in config.items():
+            try:
+                from_frame = self._require(
+                    sub_cfg, 'from_frame', context=f'query_time_tf_subscribers.{name}'
+                )
+                to_frame = self._require(
+                    sub_cfg, 'to_frame', context=f'query_time_tf_subscribers.{name}'
+                )
+                self.tf_query_subs[name] = QueryTimeTFSubscriber(
+                    node=self.node,
+                    from_frame=from_frame,
+                    to_frame=to_frame,
+                    buffer=self._buffer,
+                    listener=self._listener,
+                    max_age_sec=sub_cfg.get('max_age_sec', 2.0),
+                )
+            except (KeyError, RuntimeError) as e:
+                self.logger.error(f'Failed to create TF query subscriber "{name}": {e}')
+
+    def _load_insertion_subs(self, config: dict, env: Environment, update_fn: Callable) -> None:
+        for name, sub_cfg in config.items():
+            try:
+                topic = self._require(sub_cfg, 'topic', context=f'insertion_subscribers.{name}')
+                template_name = self._require(
+                    sub_cfg, 'template', context=f'insertion_subscribers.{name}'
+                )
+
+                try:
+                    template = env.get_template(template_name)
+                except Exception as e:
+                    raise RuntimeError(f'Unable to load template "{template_name}": {e}')
+
+                self.insertion_subs[name] = InsertionSubscriber(
+                    node=self.node,
+                    topic=topic,
+                    template=template,
+                    update_fn=update_fn,
+                )
+            except (KeyError, RuntimeError) as e:
                 self.logger.error(f'Failed to create insertion subscriber "{name}": {e}')
+
+    @staticmethod
+    def _require(cfg: dict, key: str, context: str) -> str:
+        if key not in cfg or not cfg[key]:
+            raise KeyError(f'Missing required field "{key}" in {context}')
+        return cfg[key]

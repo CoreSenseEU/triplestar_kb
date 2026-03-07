@@ -38,10 +38,16 @@ class BaseQueryTimeSubscriber:
 
 
 class QueryTimeTopicSubscriber(BaseQueryTimeSubscriber):
-    def __init__(self, node: Node | LifecycleNode, config: dict):
-        super().__init__(node, config.get('max_age_sec', 2.0))
-        self._topic_name = config.get('topic', config.get('topic_name', ''))
-        self._msg_field_name = config.get('msg_field_name')
+    def __init__(
+        self,
+        node: Node | LifecycleNode,
+        topic: str,
+        max_age_sec: float = 2.0,
+        msg_field_name: Optional[str] = None,
+    ):
+        super().__init__(node, max_age_sec)
+        self._topic_name = topic
+        self._msg_field_name = msg_field_name
         self._latest_msg = None
         self._latest_time = None
 
@@ -85,27 +91,28 @@ class QueryTimeTopicSubscriber(BaseQueryTimeSubscriber):
 class QueryTimeTFSubscriber(BaseQueryTimeSubscriber):
     def __init__(
         self,
-        node,
-        config: dict,
+        node: Node | LifecycleNode,
+        from_frame: str,
+        to_frame: str,
         buffer: tf2_ros.Buffer,
         listener: tf2_ros.TransformListener,
+        max_age_sec: float = 2.0,
     ):
-        super().__init__(node, config.get('max_age_sec', 2.0))
-        self.config = config
+        super().__init__(node, max_age_sec)
+        self._from_frame = from_frame
+        self._to_frame = to_frame
         self._buffer = buffer
         self._listener = listener
 
     def get_latest(self) -> Optional[TransformStamped]:
         try:
             transform = self._buffer.lookup_transform(
-                self.config['to_frame'],
-                self.config['from_frame'],
+                self._to_frame,
+                self._from_frame,
                 Time(),
                 timeout=rclpy.duration.Duration(seconds=1.0),  # type: ignore
             )
             return transform.transform.translation
         except Exception as e:
-            self._logger.warn(
-                f'TF lookup failed for {self.config["from_frame"]} -> {self.config["to_frame"]}: {e}'
-            )
+            self._logger.warn(f'TF lookup failed for {self._from_frame} -> {self._to_frame}: {e}')
             return None
