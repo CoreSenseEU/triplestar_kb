@@ -12,6 +12,7 @@ from rclpy.lifecycle import (
 from triplestar_kb_msgs.srv import Query
 
 from triplestar_kb.kb_interface import TriplestarKBInterface
+from triplestar_kb.query_services.query_service_manager import QueryServiceManager
 from triplestar_kb.subscriptions.subscriber_manager import SubscriberManager
 
 
@@ -25,6 +26,7 @@ class RosTriplestarKBInterface(LifecycleNode):
 
         self.kb: Optional[TriplestarKBInterface] = None
         self.subscriber_manager: Optional[SubscriberManager] = None
+        self.query_service_manager: Optional[QueryServiceManager] = None
 
         self._declare_parameters()
 
@@ -39,7 +41,12 @@ class RosTriplestarKBInterface(LifecycleNode):
         self.declare_parameter('queries_dir', str(Path(bringup_share) / 'queries'))
         self.declare_parameter('preload_dir', str(Path(bringup_share) / 'preload'))
         self.declare_parameter(
-            'subscriber_config_file', str(Path(bringup_share) / 'config' / 'subscribers.yaml')
+            'subscriber_config_file',
+            str(Path(bringup_share) / 'config' / 'subscribers.yaml'),
+        )
+        self.declare_parameter(
+            'query_services_config_file',
+            str(Path(bringup_share) / 'config' / 'query_services.yaml'),
         )
         self.declare_parameter(
             'preload_files',
@@ -48,7 +55,7 @@ class RosTriplestarKBInterface(LifecycleNode):
         )
 
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
-        """Initialize the RDF store, preload files, and set up subscribers."""
+        """Initialize the RDF store, preload files, and set up subscribers and query services."""
         self.get_logger().info('Configuring KB node...')
 
         self.kb = TriplestarKBInterface(
@@ -61,10 +68,17 @@ class RosTriplestarKBInterface(LifecycleNode):
             self.get_logger().error('Failed to preload files')
             return TransitionCallbackReturn.ERROR
 
-        subscriber_config_path = Path(self.get_parameter('subscriber_config_file').value)
-        subscriber_config = yaml.safe_load(subscriber_config_path.read_text())
-
+        subscriber_config = self._load_yaml_config('subscriber_config_file')
+        if subscriber_config is None:
+            return TransitionCallbackReturn.ERROR
         self.subscriber_manager = SubscriberManager(self, config=subscriber_config, kb=self.kb)
+
+        query_services_config = self._load_yaml_config('query_services_config_file')
+        if query_services_config is None:
+            return TransitionCallbackReturn.ERROR
+        self.query_service_manager = QueryServiceManager(
+            self, config=query_services_config, kb=self.kb
+        )
 
         self.get_logger().info('KB node configured successfully')
         return TransitionCallbackReturn.SUCCESS
@@ -78,6 +92,7 @@ class RosTriplestarKBInterface(LifecycleNode):
             self.kb = None
 
         self.subscriber_manager = None
+        self.query_service_manager = None
 
         self.get_logger().info('KB node cleaned up')
         return TransitionCallbackReturn.SUCCESS
@@ -116,6 +131,18 @@ class RosTriplestarKBInterface(LifecycleNode):
         """Final shutdown and cleanup."""
         self.get_logger().info('Shutting down KB node...')
         return TransitionCallbackReturn.SUCCESS
+
+    def _load_yaml_config(self, param_name: str) -> Optional[dict]:
+        """Load a YAML config file from the path stored in the given parameter."""
+        config_path = Path(self.get_parameter(param_name).value)
+        try:
+            return yaml.safe_load(config_path.read_text()) or {}
+        except FileNotFoundError:
+            self.get_logger().error(f'Config file not found: {config_path}')
+            return None
+        except yaml.YAMLError as e:
+            self.get_logger().error(f'Failed to parse config file {config_path}: {e}')
+            return None
 
     def _preload_files(self) -> bool:
         """Preload TTL files from the configured preload directory."""
