@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 import rclpy
 import tf2_ros
+from geometry_msgs.msg import TransformStamped
 from rclpy.lifecycle import LifecycleNode
 from rclpy.node import Node
 from rclpy.time import Time
@@ -94,7 +95,7 @@ class QueryTimeTFSubscriber(BaseQueryTimeSubscriber):
         self._buffer = buffer
         self._listener = listener
 
-    def get_latest(self):
+    def get_latest(self) -> Optional[TransformStamped]:
         try:
             transform = self._buffer.lookup_transform(
                 self.config['to_frame'],
