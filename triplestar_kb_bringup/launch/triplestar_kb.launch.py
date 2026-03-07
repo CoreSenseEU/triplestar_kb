@@ -39,6 +39,7 @@ def generate_launch_description():
         output='screen',
         parameters=[config],
         arguments=['--ros-args', '--log-level', ['triplestar_kb:=', log_level]],
+        emulate_tty=True,
     )
 
     triplestar_kb_node_config_event = EmitEvent(
@@ -76,7 +77,7 @@ def generate_launch_description():
         output='screen',
     )
 
-    start_marker_publisher = RegisterEventHandler(
+    _start_marker_publisher = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=triplestar_kb_node,
             goal_state='active',
