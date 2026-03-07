@@ -1,13 +1,13 @@
 from pathlib import Path
+from typing import Callable
 
 from rclpy.lifecycle import LifecycleNode
 from rclpy.node import Node
-from triplestar_kb.ros_kb_interface import TriplestarKBInterface
 from triplestar_kb_msgs.srv import Query
 
 """
-the query service sets up a service, and takes in a query file.
-when called it calls the query service with that query file and then returns the json data.
+The query service sets up a ROS service backed by a .sparql file.
+On each call it reads the file and delegates execution to query_fn.
 """
 
 
@@ -17,15 +17,17 @@ class QueryService:
         node: Node | LifecycleNode,
         name: str,
         query_file: Path,
-        kb: TriplestarKBInterface,
+        query_fn: Callable[[str], str],
     ):
         self.name = name
-        if not query_file.exists():
-            raise FileNotFoundError(f'Query file {query_file} does not exist')
-        self.query_file = query_file
-        self.kb = kb
 
-        self._query_service = node.create_service(
+        if not query_file.exists():
+            raise FileNotFoundError(f'Query file not found: {query_file}')
+
+        self.query_file = query_file
+        self._query_fn = query_fn
+
+        self._service = node.create_service(
             srv_name=name,
             srv_type=Query,
             callback=self._callback,
@@ -38,5 +40,5 @@ class QueryService:
     ) -> Query.Response:
         with open(self.query_file, 'r') as f:
             query = f.read()
-        response.result = self.kb.query_json(query=query)
+        response.result = self._query_fn(query)
         return response

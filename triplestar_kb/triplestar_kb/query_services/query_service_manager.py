@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Callable
+
 from triplestar_kb.kb_interface import TriplestarKBInterface
 from triplestar_kb.query_services.query_service import QueryService
 
@@ -9,27 +12,41 @@ class QueryServiceManager:
 
         self.query_services: dict[str, QueryService] = {}
 
+        queries_dir = Path(node.get_parameter('queries_dir').value)
+        query_fn = self._make_query_fn(kb)
+
         for name, sub_cfg in config.items():
             try:
-                self.query_services[name] = QueryService(sub_cfg, kb)
-            except RuntimeError as e:
-                self.logger.error(f'Failed to create topic subscriber "{name}": {e}')
-        self._load_config(config, kb)
+                query_file = self._resolve_query_file(sub_cfg, queries_dir, name)
+                self.query_services[name] = QueryService(
+                    node=node,
+                    name=name,
+                    query_file=query_file,
+                    query_fn=query_fn,
+                )
+            except (KeyError, FileNotFoundError, RuntimeError) as e:
+                self.logger.error(f'Failed to create query service "{name}": {e}')
 
         self.logger.info(
-            f'QueryServiceManager initialized — query-services: {list(self.query_services.keys())}'
+            f'QueryServiceManager initialized — query services: {list(self.query_services.keys())}'
         )
 
-    def _load_config(self, config: dict, kb: TriplestarKBInterface):
-
-        def query_fn(sparql: str) -> None:
+    def _make_query_fn(self, kb: TriplestarKBInterface) -> Callable[[str], str]:
+        def query_fn(sparql: str) -> str:
             if kb.store is None:
                 self.logger.error('KB store is not initialized, dropping query')
-                return
-            kb.query_json(sparql)
+                return ''
+            return kb.query_json(sparql)
 
-        # for name, sub_cfg in config.get('insertion_subscribers', {}).items():
-        #     try:
-        #         self.insertion_subs[name] = InsertionSubscriber(self.node, sub_cfg, env, update_fn)
-        #     except RuntimeError as e:
-        #         self.logger.error(f'Failed to create insertion subscriber "{name}": {e}')
+        return query_fn
+
+    def _resolve_query_file(self, cfg: dict, queries_dir: Path, name: str) -> Path:
+        if 'query_file' not in cfg or not cfg['query_file']:
+            raise KeyError(f'Missing required field "query_file" in query service "{name}"')
+
+        query_file = queries_dir / cfg['query_file']
+
+        if not query_file.exists():
+            raise FileNotFoundError(f'Query file not found: {query_file}')
+
+        return query_file
