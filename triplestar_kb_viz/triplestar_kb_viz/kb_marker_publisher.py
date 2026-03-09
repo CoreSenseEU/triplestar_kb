@@ -4,7 +4,7 @@ import rclpy
 from geometry_msgs.msg import Point
 from rclpy.node import Node
 from shapely import wkt
-from triplestar_kb_msgs.srv import Query
+from triplestar_kb_msgs.srv import SPARQLQuery
 from visualization_msgs.msg import Marker, MarkerArray
 
 EX = 'http://example.org/'
@@ -21,11 +21,11 @@ class KBPolygonViz(Node):
         self.get_logger().info('KB Polygon Visualizer node started')
 
     def send_sparql_query_to_kb(self, sparql: str):
-        client = self.create_client(Query, '/triplestar_kb/query')
+        client = self.create_client(SPARQLQuery, '/triplestar_kb/query')
         while not client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn('Waiting for /triplestar_kb/query service...')
 
-        request = Query.Request()
+        request = SPARQLQuery.Request()
         request.query = sparql
 
         self.get_logger().debug(f'Sending SPARQL query:\n{sparql}')

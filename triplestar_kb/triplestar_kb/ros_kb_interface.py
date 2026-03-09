@@ -9,7 +9,7 @@ from rclpy.lifecycle import (
     LifecycleState,
     TransitionCallbackReturn,
 )
-from triplestar_kb_msgs.srv import Query
+from triplestar_kb_msgs.srv import SPARQLQuery
 
 from triplestar_kb.kb_interface import TriplestarKBInterface
 from triplestar_kb.query_services.query_service_manager import QueryServiceManager
@@ -102,7 +102,7 @@ class RosTriplestarKBInterface(LifecycleNode):
         self.get_logger().info('Activating KB node...')
 
         self.query_service = self.create_service(
-            Query, f'{self.get_name()}/query', self.query_callback
+            SPARQLQuery, f'{self.get_name()}/query', self.query_callback
         )
 
         result = super().on_activate(state)
@@ -182,7 +182,9 @@ class RosTriplestarKBInterface(LifecycleNode):
         self.get_logger().info(f'Amount of triples in the KB: {self.kb._count_triples()}')
         return True
 
-    def query_callback(self, request: Query.Request, response: Query.Response) -> Query.Response:
+    def query_callback(
+        self, request: SPARQLQuery.Request, response: SPARQLQuery.Response
+    ) -> SPARQLQuery.Response:
         """Handle a SPARQL query request."""
         self.get_logger().debug(f'Received query request: {request}')
 

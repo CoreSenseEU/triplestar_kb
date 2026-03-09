@@ -12,7 +12,7 @@ find_package(rcl_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-    "srv/Query.srv"
+    "srv/SPARQLQuery.srv"
     "srv/SetVizQuery.srv"
     "srv/SelectQuery.srv"
     "srv/AskQuery.srv"

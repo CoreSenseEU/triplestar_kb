@@ -1,4 +1,0 @@
-string query
----
-bool success
-string result # using a string of the json output for now

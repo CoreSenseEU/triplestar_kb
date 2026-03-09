@@ -1,0 +1,5 @@
+string query # SPARQL query to execute
+---
+bool success
+string error_message
+string result # JSON or boolean depending on query type

@@ -13,7 +13,7 @@ from pathlib import Path
 
 import rclpy
 from rclpy.node import Node
-from triplestar_kb_msgs.srv import Query
+from triplestar_kb_msgs.srv import SPARQLQuery
 
 
 class QueryKBClient(Node):
@@ -21,7 +21,7 @@ class QueryKBClient(Node):
 
     def __init__(self):
         super().__init__('query_kb_client')
-        self.client = self.create_client(Query, '/triplestar_kb/query')
+        self.client = self.create_client(SPARQLQuery, '/triplestar_kb/query')
 
     def send_query(self, query_string: str) -> tuple[bool, str]:
         """
@@ -37,7 +37,7 @@ class QueryKBClient(Node):
             self.get_logger().error('Service not available')
             return False, ''
 
-        request = Query.Request()
+        request = SPARQLQuery.Request()
         request.query = query_string
 
         future = self.client.call_async(request)
