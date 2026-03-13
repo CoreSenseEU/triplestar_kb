@@ -10,6 +10,9 @@ triplestar_kb:
         # # subscriber configuration
         # subscriber_config_file: "/path/to/custom/subscribers.yaml"
 
+        # # query service configuration
+        # query_service_config_file: "/path/to/custom/query_services.yaml"
+
         preload_files:
             - floorplan.ttl
             - annotated_data.ttl
