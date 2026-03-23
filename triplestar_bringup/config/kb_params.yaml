@@ -14,5 +14,4 @@ triplestar_core:
         # config_package: "triplestar_bringup"
 
         preload_files:
-            - floorplan.ttl
-            - annotated_data.ttl
+            - example_data.ttl
