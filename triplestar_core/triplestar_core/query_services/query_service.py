@@ -35,7 +35,6 @@ class QueryService:
         query_file: Path,
         query_fn: Callable[[str], str],
     ):
-        self.name = name
         self.logger = node.get_logger().get_child(name)
 
         if not query_file.exists():
@@ -43,6 +42,7 @@ class QueryService:
 
         self.query_file = query_file
         self._query_fn = query_fn
+        self.logger = node.get_logger().get_child(name)
 
         query_type = _detect_query_type(query_file)
         service_name = f'{node.get_name()}/query_services/{name}'
