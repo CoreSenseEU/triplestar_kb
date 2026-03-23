@@ -40,66 +40,48 @@ class QueryService:
         if not query_file.exists():
             raise FileNotFoundError(f'Query file not found: {query_file}')
 
-        self.query_file = query_file
+        self._query = query_file.read_text()
         self._query_fn = query_fn
         self.logger = node.get_logger().get_child(name)
 
         query_type = _detect_query_type(query_file)
-        service_name = f'{node.get_name()}/query_services/{name}'
+        srv_name = f'{node.get_name()}/query_services/{name}'
 
-        if query_type == 'select':
-            self._service = node.create_service(
-                srv_type=SelectQuery,
-                srv_name=service_name,
-                callback=self._select_callback,
-            )
-        elif query_type == 'ask':
-            self._service = node.create_service(
-                srv_type=AskQuery,
-                srv_name=service_name,
-                callback=self._ask_callback,
-            )
-        else:
-            raise ValueError(f'Unknown query type "{query_type}", expected "select" or "ask"')
+        srv_map = {
+            'select': (SelectQuery, self._handle_select),
+            'ask': (AskQuery, self._handle_ask),
+        }
+
+        if query_type not in srv_map:
+            raise ValueError(f'Unknown query type "{query_type}"')
+
+        srv_type, callback = srv_map[query_type]
+        node.create_service(
+            srv_type,
+            srv_name,
+            callback,
+        )
 
         self.logger.info(f'Query service "{service_name}" ready ({query_type})')
 
-    def _read_query(self) -> str:
-        with open(self.query_file, 'r') as f:
-            return f.read()
+    def _handle_select(self, request, response):
+        return self._handle(response, lambda r: r)
 
-    def _select_callback(
-        self,
-        request: SelectQuery.Request,
-        response: SelectQuery.Response,
-    ) -> SelectQuery.Response:
-        try:
-            result = self._query_fn(self._read_query())
-            response.success = result != ''
-            response.result = result
-            if not response.success:
-                response.error_message = 'Query returned an empty result'
-        except Exception as e:
-            self.logger.error(f'Select query failed: {e}')
-            response.success = False
-            response.error_message = str(e)
-        return response
+    def _handle_ask(self, request, response):
+        return self._handle(response, lambda r: json.loads(r).get('boolean', False))
 
-    def _ask_callback(
-        self,
-        request: AskQuery.Request,
-        response: AskQuery.Response,
-    ) -> AskQuery.Response:
+    def _handle(self, response, transform_fn):
         try:
-            raw = self._query_fn(self._read_query())
-            response.success = raw != ''
-            if response.success:
-                # ASK queries serialise to {"boolean": true/false} in SPARQL JSON
-                response.result = json.loads(raw).get('boolean', False)
-            else:
+            raw = self._query_fn(self._query)
+            if not raw:
+                response.success = False
                 response.error_message = 'Query returned an empty result'
+                return response
+
+            response.success = True
+            response.result = transform_fn(raw)
         except Exception as e:
-            self.logger.error(f'Ask query failed: {e}')
+            self.logger.error(f'Query failed: {e}')
             response.success = False
             response.error_message = str(e)
         return response
