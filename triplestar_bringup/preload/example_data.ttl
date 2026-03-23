@@ -4,8 +4,17 @@
 
 # Example preload data — replace with your own domain knowledge.
 
+ex:Robot a rdfs:Class .
+
+ex:MobileRobot a rdfs:Class ;
+    rdfs:subClassOf ex:Robot .
+
+# Vacuum robot is a subclass of robot
+ex:VacuumRobot a rdfs:Class ;
+    rdfs:subClassOf ex:Robot .
+
 ex:Robot1 a ex:Robot ;
     rdfs:label "Robot 1" .
 
-ex:Robot2 a ex:Robot ;
+ex:Robot2 a ex:VacuumRobot ;
     rdfs:label "Robot 2" .

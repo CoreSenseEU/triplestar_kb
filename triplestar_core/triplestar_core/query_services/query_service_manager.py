@@ -11,9 +11,9 @@ class QueryServiceManager:
 
         self.query_services: dict[str, QueryService] = {}
 
-        for name, svc_cfg in config.items():
+        for name, srv_config in config.items():
             try:
-                query_file_name = svc_cfg.get('query_file')
+                query_file_name = srv_config.get('query_file')
                 if not query_file_name:
                     raise KeyError(f'No query_file specified for service "{name}"')
 
@@ -21,7 +21,7 @@ class QueryServiceManager:
                 if not query_file.exists():
                     raise FileNotFoundError(f'Query file not found: {query_file}')
 
-                reasoning_enabled = svc_cfg.get('reasoning', False)
+                reasoning_enabled = srv_config.get('reasoning', False)
 
                 def query_fn(sparql: str, reasoning=reasoning_enabled) -> str:
                     return kb.query_json(sparql, reasoning=reasoning)
