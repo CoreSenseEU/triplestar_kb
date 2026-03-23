@@ -1,20 +1,22 @@
-insertion_subscribers:
-    detections:
-        topic: "/yolo/detections_3d"
-        template: "DetectionSimple.sparql.tmpl"
+# Insertion subscribers run a Jinja2 SPARQL template on every message
+# received on the given topic, inserting the result into the KB.
+#
+# insertion_subscribers:
+#     my_detections:
+#         topic: "/detections"
+#         template: "ExampleInsertion.sparql.tmpl"
 
+# Query-time topic subscribers expose the latest message on a topic as a
+# custom SPARQL function (e.g. ex:batteryLevel()) available at query time.
+#
 # query_time_topic_subscribers:
-#     robotBatteryLevel:
+#     batteryLevel:
 #         topic: "/battery_level"
-#     robotFootprint:
-#         topic: "/polygons"
-#     robotTime:
-#         topic: "/time"
 
-query_time_tf_subscribers:
-    robotPose:
-        from_frame: "base_link"
-        to_frame: "map"
-    gripperPose:
-        from_frame: "gripper"
-        to_frame: "map"
+# Query-time TF subscribers expose the latest transform between two frames
+# as a custom SPARQL function (e.g. ex:robotPose()) available at query time.
+#
+# query_time_tf_subscribers:
+#     robotPose:
+#         from_frame: "base_link"
+#         to_frame: "map"
