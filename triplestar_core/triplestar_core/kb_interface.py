@@ -31,19 +31,21 @@ class TriplestarKBInterface:
         # NOTE: Reasoner is recreated each time, is that OK?
         reasoner = reasonable.PyReasoner()
 
-        quads = self.store.quads_for_pattern(None, None, None, DefaultGraph())
-        triples = [from_ox(q.triple) for q in quads]
+        # filter out RDF* triples (reasoner does not support RDF*)
+        def is_plain_triple(t):
+            return isinstance(t, tuple) and not any(isinstance(term, tuple) for term in t)
 
-        # NOTE: remove RDF* triples (maybe we can skip this later when reasonable catches up?)
-        triples = [t for t in triples if not any(isinstance(term, tuple) for term in t)]  # type: ignore[arg-type]
+        quads = self.store.quads_for_pattern(None, None, None, DefaultGraph())
+
+        triples = [t for q in quads if is_plain_triple(t := from_ox(q.triple))]
 
         reasoner.from_graph(triples)
         inferred = reasoner.reason()
 
-        def triple_to_reasoned_quad(s, p, o):
-            return Quad(to_ox(s), to_ox(p), to_ox(o), self.reasoned_graph)  # type: ignore[arg-type]
-
-        inferred_quads = [triple_to_reasoned_quad(s, p, o) for s, p, o in inferred]
+        inferred_quads = [
+            Quad(to_ox(s), to_ox(p), to_ox(o), self.reasoned_graph)  # type: ignore
+            for s, p, o in inferred
+        ]
 
         # refresh reasoned graph
         self.store.remove_graph(self.reasoned_graph)
