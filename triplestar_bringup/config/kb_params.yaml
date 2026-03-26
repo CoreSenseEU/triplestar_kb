@@ -13,5 +13,8 @@ triplestar_core:
 
         config_package: "triplestar_bringup"
 
+        # Base IRI for resolving relative IRIs and functions in the KB.
+        base_iri: "http://triplestar.local"
+
         preload_files:
             - example_data.ttl

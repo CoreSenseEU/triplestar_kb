@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 import reasonable
 from oxrdflib._converter import from_ox, to_ox
@@ -7,24 +7,43 @@ from pyoxigraph import DefaultGraph, NamedNode, Quad, QueryResultsFormat, RdfFor
 
 
 class TriplestarKBInterface:
-    def __init__(self, store_path: Optional[Path] = None, logger=None):
+    def __init__(
+        self,
+        store_path: Path,
+        base_iri: str,
+        logger,
+    ):
         if logger is None:
             raise ValueError('logger must be provided')
         self.logger = logger.get_child('KBInterface')
 
         self.store_path = store_path
-        self.store: Store = Store(store_path) if store_path else Store()
+        self.store: Store = Store(store_path)
         self.logger.info(
             f'Initialized store at {self.store_path if self.store_path else "in-memory"}'
         )
 
-        self.reasoned_graph = NamedNode('http://example.org/reasoned-graph')
+        self.base_iri = base_iri
+        self.reasoned_graph = NamedNode(f'{self.base_iri}/reasoned-graph')
+        self.function_uri_base: str = f'{self.base_iri}/functions/'
+        self.query_time_uri_base: str = f'{self.base_iri}/query-time/'
+        self.extra_iris = {
+            'fn': self.function_uri_base,
+            'qt': self.query_time_uri_base,
+        }
 
         self.custom_functions: dict[NamedNode, Callable] = {}
 
-    def add_custom_function(self, function_uri: NamedNode, function: Callable):
-        self.custom_functions[function_uri] = function
-        self.logger.info(f'Added custom function for {function_uri.value}()')
+    def _add_function(self, name: str, base_uri: str, function: Callable):
+        uri = NamedNode(f'{base_uri}{name}')
+        self.custom_functions[uri] = function
+        self.logger.info(f'Added custom function for {uri.value}()')
+
+    def add_custom_function(self, name: str, function: Callable):
+        self._add_function(name, self.function_uri_base, function)
+
+    def add_query_time_function(self, name: str, function: Callable):
+        self._add_function(name, self.query_time_uri_base, function)
 
     def run_reasoning(self):
         self.logger.info('Running reasoning...')
@@ -35,9 +54,11 @@ class TriplestarKBInterface:
         def is_plain_triple(t):
             return isinstance(t, tuple) and not any(isinstance(term, tuple) for term in t)
 
-        quads = self.store.quads_for_pattern(None, None, None, DefaultGraph())
-
-        triples = [t for q in quads if is_plain_triple(t := from_ox(q.triple))]
+        triples = [
+            from_ox(q.triple)
+            for q in self.store.quads_for_pattern(None, None, None, DefaultGraph())
+            if is_plain_triple(from_ox(q.triple))
+        ]
 
         reasoner.from_graph(triples)
         inferred = reasoner.reason()
@@ -70,7 +91,11 @@ class TriplestarKBInterface:
             self.run_reasoning()
         try:
             result = self.store.query(
-                query, custom_functions=self.custom_functions, use_default_graph_as_union=reasoning
+                query,
+                base_iri=self.base_iri,
+                prefixes=self.extra_iris,
+                custom_functions=self.custom_functions,
+                use_default_graph_as_union=reasoning,
             )
             return result.serialize(format=QueryResultsFormat.JSON).decode('utf-8')  # type: ignore
         except Exception as e:

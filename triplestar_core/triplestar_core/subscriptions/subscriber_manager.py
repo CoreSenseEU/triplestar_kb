@@ -3,7 +3,6 @@ from typing import Callable
 
 import tf2_ros
 from jinja2 import Environment, FileSystemLoader
-from pyoxigraph import NamedNode
 
 from triplestar_core.kb_interface import TriplestarKBInterface
 from triplestar_core.msg_to_rdf import ros_msg_to_literal
@@ -12,8 +11,6 @@ from triplestar_core.subscriptions.query_time_subscriber import (
     QueryTimeTFSubscriber,
     QueryTimeTopicSubscriber,
 )
-
-EX = 'http://example.org/'
 
 
 def _rdf_filter(value) -> str:
@@ -44,9 +41,10 @@ class SubscriberManager:
 
         # Register query-time subscribers as custom SPARQL functions
         all_query_subs = {**self.topic_query_subs, **self.tf_query_subs}
+
         for name, sub in all_query_subs.items():
-            kb.add_custom_function(
-                NamedNode(EX + name),
+            kb.add_query_time_function(
+                name,
                 lambda s=sub: ros_msg_to_literal(s.get_latest()),
             )
 

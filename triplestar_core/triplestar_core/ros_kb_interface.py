@@ -41,6 +41,7 @@ class RosTriplestarKBInterface(LifecycleNode):
             [''],
             descriptor=rclpy.node.ParameterDescriptor(type=rclpy.Parameter.Type.STRING_ARRAY),
         )
+        self.declare_parameter('base_iri', 'http://triplestar.local')
 
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
         """Initialize the RDF store, preload files, and set up subscribers and query services."""
@@ -49,6 +50,7 @@ class RosTriplestarKBInterface(LifecycleNode):
         self.kb = TriplestarKBInterface(
             store_path=Path(self.get_parameter('store_path').value),
             logger=self.get_logger(),
+            base_iri=self.get_parameter('base_iri').value,
         )
         self.get_logger().info(f'Using store path: {self.kb.store_path}')
 

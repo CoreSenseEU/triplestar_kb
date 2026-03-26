@@ -13,7 +13,17 @@ There are three config files: `kb_params.yaml`, `query_services.yaml` and `subsc
 
 ### `kb_params.yaml`
 
-This config file contains the path where `oxigraph` will store data, which files to preload into the KB and what the name of the config package is. Specifying the name of your custom config package will allow the KB to access the share directory of that package, and find your custom preload, query and template files.
+This config file contains the path where `oxigraph` will store data, which files to preload into the KB and what the name of the config package is.
+
+Specifying the name of your custom config package will allow the KB to access the share directory of that package, and find your custom preload, query and template files.
+
+The `base_iri` field is used to provide a default IRI to resolve relative IRIs to in sparql updates and queries.
+So, with a base IRI of "http://triplestar.local", `:robotA` will resolve to `http://triplestar.local/robotA`.
+
+Custom functions are available as prefix `fn`. So `fn:myCustomFunction` --> `http://triplestar.local/functions/myCustomFunction`.
+
+[Query time subscribers functions](../README.md#query-time-subscribers) are available with the `qt` prefix.
+So `qt:robotPosition` --> `http://triplestar.local/query-time/robotPosition`
 
 ### `query_services.yaml`
 
