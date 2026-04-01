@@ -1,8 +1,15 @@
 import hashlib
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
 
 from graphviz import Digraph
 from pyoxigraph import BlankNode, Literal, NamedNode, Quad, Store, Triple
+
+
+@dataclass
+class VisualizerTriple:
+    triple: Triple
+    asserted: bool = True
 
 
 class RDFStarVisualizer:
@@ -168,16 +175,18 @@ class RDFStarVisualizer:
         if node_id in self._processed_nodes:
             return isinstance(node, Triple)
 
-        if isinstance(node, Triple):
-            # For triples, we assume they already exist as midpoint nodes
-            return True
-        elif isinstance(node, NamedNode):
-            shortened_label = self.shorten_uri(str(node))
-            self.dot.node(node_id, shortened_label, **self.styles['named_node'])
-        elif isinstance(node, BlankNode):
-            self.dot.node(node_id, str(node), **self.styles['blank_node'])
-        elif isinstance(node, Literal):
-            self.dot.node(node_id, self.literal_label(node), **self.styles['literal'])
+        match node:
+            case Triple():
+                # For triples, we assume they already exist as midpoint nodes
+                self._processed_nodes.add(node_id)
+                return True
+            case NamedNode():
+                shortened_label = self.shorten_uri(str(node))
+                self.dot.node(node_id, shortened_label, **self.styles['named_node'])
+            case BlankNode():
+                self.dot.node(node_id, str(node), **self.styles['blank_node'])
+            case Literal():
+                self.dot.node(node_id, self.literal_label(node), **self.styles['literal'])
 
         self._processed_nodes.add(node_id)
         return False
@@ -216,6 +225,38 @@ class RDFStarVisualizer:
         """Add multiple quads to the visualization."""
         for quad in quads:
             self.add_quad(quad)
+
+    def build_visualization(self, quads: list[Quad]) -> None:
+        self._reset_graph()
+
+        visualizer_triples: set[VisualizerTriple] = set()
+        reifier_map: dict[NamedNode | BlankNode | Triple, Triple] = {}
+
+        for quad in quads:
+            if isinstance(quad.object, Triple) and quad.predicate == NamedNode(
+                'http://www.w3.org/1999/02/22-rdf-syntax-ns#reifies'
+            ):
+                reifier_map[quad.subject] = quad.object
+                visualizer_triples.add(VisualizerTriple(quad.object, False))
+
+        for quad in quads:
+            visualizer_triples.add(
+                VisualizerTriple(
+                    Triple(
+                        subject=reifier_map[quad.subject]
+                        if quad.subject in reifier_map
+                        else quad.subject,
+                        predicate=quad.predicate,
+                        object=reifier_map[quad.object]
+                        if quad.object in reifier_map
+                        else quad.object,
+                    ),
+                    True,
+                )
+            )
+
+        for triple in visualizer_triples:
+            self.add_node_if_needed(triple.triple, self.safe_id(triple.triple))
 
     def get_source(self) -> str:
         """Get the DOT source code."""
