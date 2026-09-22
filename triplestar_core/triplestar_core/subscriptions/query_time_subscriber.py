@@ -34,18 +34,21 @@ class TopicLatestSubscriber(BaseLatestSubscriber):
         msg_type,
         callback_group,
         max_age_sec: float = 2.0,
-        msg_field_name: str | None = None,
+        target_msg_field: str | None = None,
     ):
         super().__init__(node, logger, topic.strip('/').replace('/', '.'), max_age_sec)
         self._topic = topic
-        self._msg_field_name = msg_field_name
+        self._target_msg_field = target_msg_field
         self._latest_msg = None
         self._latest_time = None
 
-        if self._msg_field_name and not hasattr(msg_type, self._msg_field_name):
-            raise RuntimeError(
-                f'Message type {msg_type} does not have field {self._msg_field_name}'
-            )
+        if self._target_msg_field:
+            try:
+                self._resolve_target_field(msg_type())
+            except (AttributeError, TypeError) as e:
+                raise RuntimeError(
+                    f'Message type {msg_type} does not have field path {self._target_msg_field}'
+                ) from e
 
         self._subscription = self._node.create_subscription(
             msg_type,
@@ -67,16 +70,21 @@ class TopicLatestSubscriber(BaseLatestSubscriber):
             else self._node.get_clock().now().nanoseconds * 1e-9
         )
 
+    def _resolve_target_field(self, msg):
+        assert self._target_msg_field is not None
+        value = msg
+        for field_name in self._target_msg_field.split('.'):
+            value = getattr(value, field_name)
+        return value
+
     def get_latest(self, *args, **kwargs):
         if not self._latest_msg or not self._latest_time:
             return None
         if (time.time() - self._latest_time) >= self._max_age_sec:
             return None
-        return (
-            getattr(self._latest_msg, self._msg_field_name, self._latest_msg)
-            if self._msg_field_name
-            else self._latest_msg
-        )
+        if self._target_msg_field:
+            return self._resolve_target_field(self._latest_msg)
+        return self._latest_msg
 
 
 class TransformLatestSubscriber(BaseLatestSubscriber):

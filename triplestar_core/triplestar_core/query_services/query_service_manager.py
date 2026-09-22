@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from rclpy.lifecycle import LifecycleNode
 
 from triplestar_core.config import QueryServiceConfig
-from triplestar_core.config import QueryServicesConfig
+from triplestar_core.config import TriplestarConfig
 from triplestar_core.knowledge_base import KnowledgeBase
 from triplestar_core.query_services.query_service import FileQueryService
 from triplestar_msgs.srv import SPARQLQuery
@@ -27,7 +27,7 @@ class QueryServiceManager:
     def __init__(
         self,
         node: LifecycleNode,
-        config: QueryServicesConfig,
+        config: TriplestarConfig,
         kb: KnowledgeBase,
         queries_dir: Path,
     ):
@@ -42,12 +42,16 @@ class QueryServiceManager:
         self.file_query_services: dict[str, FileQueryService] = {}
 
     def start(self):
-        for name, srv_config in self.config.query_services.items():
+        for srv_config in self.config.query_services:
             service = self._create_file_query_service(
-                self.node, self.kb, self.queries_dir, name, srv_config
+                self.node,
+                self.kb,
+                self.queries_dir,
+                srv_config.service_name,
+                srv_config,
             )
             if service:
-                self.file_query_services[name] = service
+                self.file_query_services[srv_config.service_name] = service
 
         self.query_service = self.node.create_service(
             SPARQLQuery, '/triplestar/sparql', self.query_callback
