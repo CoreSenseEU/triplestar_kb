@@ -2,7 +2,6 @@ import argparse
 
 from ros2cli.verb import VerbExtension
 from ros2launch.api import launch_a_launch_file
-
 from triplestar_cli.api.bringup import BringupNameCompleter
 from triplestar_cli.api.bringup import get_bringup_package_launch_file_path
 

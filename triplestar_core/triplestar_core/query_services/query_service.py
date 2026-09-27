@@ -6,7 +6,6 @@ from typing import Literal
 from opentelemetry import trace
 from rclpy.lifecycle import LifecycleNode
 from rclpy.node import Node
-
 from triplestar_core.service_contract import QUERY_SERVICE_PREFIX
 from triplestar_msgs.srv import AskQuery
 from triplestar_msgs.srv import QueryInfo

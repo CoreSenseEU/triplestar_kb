@@ -18,7 +18,6 @@ from pyoxigraph import RdfFormat
 from pyoxigraph import Store
 from pyoxigraph import Variable
 import reasonable
-
 from triplestar_core.conversions import string_to_oxi_term
 
 TRACER = trace.get_tracer('triplestar_bench')

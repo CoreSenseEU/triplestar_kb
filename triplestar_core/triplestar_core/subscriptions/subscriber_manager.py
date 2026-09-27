@@ -14,7 +14,6 @@ from rclpy.node import Node
 from rclpy.serialization import serialize_message
 from ros2topic.api import get_msg_class
 import tf2_ros
-
 from triplestar_core.config import InsertionSubscriberConfig
 from triplestar_core.config import QueryTimeTFSubscriberConfig
 from triplestar_core.config import QueryTimeTopicSubscriberConfig

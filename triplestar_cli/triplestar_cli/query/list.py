@@ -1,9 +1,8 @@
 from rich.console import Console
 from rich.table import Table
 from ros2cli.verb import VerbExtension
-from triplestar_core.service_contract import QUERY_SERVICE_PREFIX
-
 from triplestar_cli.api import get_triplestar_queries
+from triplestar_core.service_contract import QUERY_SERVICE_PREFIX
 
 
 class ListVerb(VerbExtension):

@@ -3,7 +3,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from ros2cli.verb import VerbExtension
-
 from triplestar_cli.api import DEFAULT_NODE_NAME
 from triplestar_cli.api import get_triple_count
 from triplestar_cli.api.lifecycle import get_lifecycle_state

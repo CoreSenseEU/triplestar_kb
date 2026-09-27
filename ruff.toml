@@ -24,6 +24,10 @@ ignore = ["D1", "D212"]
 [lint.pydocstyle]
 convention = "pep257"
 
+# Match the google import order that ament_flake8 enforces in the package tests:
+# case-insensitive, with this repository's packages sorted as third-party.
 [lint.isort]
 force-single-line = true
 force-sort-within-sections = true
+order-by-type = false
+known-third-party = ["triplestar_*"]

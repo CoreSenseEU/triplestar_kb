@@ -6,7 +6,6 @@ from lifecycle_msgs.srv import GetState
 import rclpy
 from ros2cli.node.strategy import NodeStrategy
 from triplestar_core.service_contract import SPARQL_SERVICE_NAME
-
 from triplestar_msgs.srv import SPARQLQuery
 
 _TIMEOUT_SEC = 2.0

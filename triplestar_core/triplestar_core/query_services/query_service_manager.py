@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rclpy.lifecycle import LifecycleNode
-
 from triplestar_core.config import QueryServiceConfig
 from triplestar_core.config import QueryServicesConfig
 from triplestar_core.knowledge_base import KnowledgeBase

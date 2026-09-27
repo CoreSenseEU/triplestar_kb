@@ -3,9 +3,8 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
 from ros2cli.verb import VerbExtension
-
-from triplestar_cli.api import QueryNameCompleter
 from triplestar_cli.api import get_triplestar_query_info
+from triplestar_cli.api import QueryNameCompleter
 
 
 class InfoVerb(VerbExtension):

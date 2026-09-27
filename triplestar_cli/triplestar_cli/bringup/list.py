@@ -1,5 +1,4 @@
 from ros2cli.verb import VerbExtension
-
 from triplestar_cli.api.bringup import discover_bringup_packages
 
 

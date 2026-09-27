@@ -1,5 +1,4 @@
 import rclpy
-
 from triplestar_core.core_lifecycle_node import TriplestarCoreNode
 
 
