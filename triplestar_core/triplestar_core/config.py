@@ -5,6 +5,9 @@ from pydantic import Field
 from pydantic import root_validator
 from pydantic import validator
 
+TF_POSITION_FUNCTION_NAME = 'tfPosition'
+RESERVED_QUERY_TIME_FUNCTION_NAMES = {TF_POSITION_FUNCTION_NAME}
+
 
 class KBConfig(BaseModel):
     store_path: Path
@@ -66,6 +69,13 @@ class TriplestarConfig(BaseModel):
         ]
         if len(query_time_names) != len(set(query_time_names)):
             raise ValueError('Query-time SPARQL function names must be unique')
+
+        reserved_names = sorted(set(query_time_names) & RESERVED_QUERY_TIME_FUNCTION_NAMES)
+        if reserved_names:
+            raise ValueError(
+                'Query-time SPARQL function names are reserved: '
+                f'{", ".join(reserved_names)}'
+            )
 
         service_names = [service.service_name for service in values.get('query_services', [])]
         if len(service_names) != len(set(service_names)):

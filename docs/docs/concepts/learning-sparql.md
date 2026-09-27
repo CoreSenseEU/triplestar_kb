@@ -41,7 +41,7 @@ For [insertion templates](insertion-templates.md), add:
 After the standard syntax, learn the project-specific pieces:
 
 - the `rdf` Jinja2 filter converts ROS fields into typed RDF literals;
-- `qt:` functions expose query-time ROS topic and TF values;
+- `qt:` contains functions evaluated when the query runs: configured query-time topic functions expose their latest ROS values, while the built-in `qt:tfPosition(frame, referenceFrame)` function exposes fresh TF frame positions;
 - `fn:` functions call Python functions registered by a bringup package;
 - optional OWL 2 RL reasoning can add inferred triples before a query.
 

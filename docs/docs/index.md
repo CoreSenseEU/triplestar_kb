@@ -16,7 +16,7 @@ In robotics, knowledge is more than sensor readings — it's understanding rooms
 - **Automatic ROS → RDF conversion** — ROS messages (`geometry_msgs/Point32`, `std_msgs/Float32`, …) are seamlessly converted to typed RDF literals (WKT geometry, XSD types)
 - **Insertion subscribers** — subscribe to ROS topics and translate incoming messages into SPARQL INSERT queries via [Jinja2](https://jinja.palletsprojects.com/) templates
 - **Query-time subscribers** — expose the latest value on a ROS topic as a SPARQL function (`qt:batteryLevel()`) callable directly from queries
-- **TF integration** — look up the latest transform between frames as a SPARQL function (`qt:robotPose()`)
+- **TF integration** - look up fresh frame positions directly from SPARQL (`qt:tfPosition(?frame, "map")`)
 - **Custom SPARQL functions** — register Python functions as `fn:` extension functions callable from SPARQL
 - **Query services** — expose SPARQL queries as typed ROS 2 services (SELECT → JSON, ASK → bool)
 - **ROS 2 lifecycle** — the KB node follows the lifecycle pattern (configure → activate → deactivate), with persistent storage to disk

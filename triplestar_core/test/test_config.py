@@ -66,6 +66,21 @@ def test_query_time_function_names_must_be_unique():
         TriplestarConfig.parse_obj(data)
 
 
+@pytest.mark.parametrize(
+    ('section', 'index'),
+    [
+        ('query_time_topic_subscribers', 0),
+        ('query_time_tf_subscribers', 0),
+    ],
+)
+def test_tf_position_query_time_function_name_is_reserved(section, index):
+    data = _config_data()
+    data[section][index]['sparql_fn_name'] = 'tfPosition'
+
+    with pytest.raises(ValidationError, match='SPARQL function names are reserved: tfPosition'):
+        TriplestarConfig.parse_obj(data)
+
+
 def test_query_service_names_must_be_unique():
     data = _config_data()
     data['query_services'].append(

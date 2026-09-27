@@ -28,11 +28,6 @@ query_time_topic_subscribers:
     sparql_fn_name: "statusStamp"
     target_msg_field: "header.stamp"
 
-query_time_tf_subscribers:
-  - from_frame: "base_link"
-    to_frame: "map"
-    sparql_fn_name: "robotPose"
-
 query_services:
   - query_file: "count_triples.sparql"
     service_name: "count_triples"
@@ -88,11 +83,28 @@ SELECT ?robot ?battery WHERE {
 }
 ```
 
-## Query-time TF subscribers
+## Query-time TF positions
 
-Each entry exposes the latest transform from `from_frame` to `to_frame` as the
-`qt:{sparql_fn_name}` SPARQL function. The function returns a `geo:wktLiteral`
-point containing the transform's translation.
+The built-in `qt:tfPosition(frame, referenceFrame)` function returns the origin of
+`frame` expressed in `referenceFrame` as a `POINT Z` `geo:wktLiteral`. Frame names
+are arguments, so they can be literals or values read from the knowledge base:
+
+```sparql
+PREFIX qt: <http://triplestar.local/query-time/>
+
+SELECT ?frame ?position WHERE {
+  ?robot <http://example.org/frameName> ?frame .
+  BIND(qt:tfPosition(?frame, "map") AS ?position)
+}
+```
+
+The lookup is non-blocking. If either frame is unknown or the latest transform is
+about two seconds old, the expression has no value and its result remains unbound.
+
+The `query_time_tf_subscribers` configuration is deprecated. Existing entries
+continue to expose a zero-argument `qt:{sparql_fn_name}()` function, but new queries
+should call `qt:tfPosition` directly. `tfPosition` is reserved and cannot be used as
+a configured query-time subscriber function name.
 
 ## Query services
 

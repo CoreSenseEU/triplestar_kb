@@ -17,12 +17,15 @@ import tf2_ros
 from triplestar_core.config import InsertionSubscriberConfig
 from triplestar_core.config import QueryTimeTFSubscriberConfig
 from triplestar_core.config import QueryTimeTopicSubscriberConfig
+from triplestar_core.config import TF_POSITION_FUNCTION_NAME
 from triplestar_core.config import TriplestarConfig
+from triplestar_core.conversions import rdf_literal_to_python
 from triplestar_core.conversions import to_rdf_literal
 from triplestar_core.knowledge_base import KnowledgeBase
 from triplestar_core.subscriptions.insertion_subscriber import InsertionSubscriber
 from triplestar_core.subscriptions.query_time_subscriber import TopicLatestSubscriber
 from triplestar_core.subscriptions.query_time_subscriber import TransformLatestSubscriber
+from triplestar_core.subscriptions.query_time_subscriber import TransformPositionLookup
 
 
 def _serialize_filter(value) -> str:
@@ -36,7 +39,24 @@ def _rdf_filter(value) -> str:
 
 def make_query_fn(sub):
     """Create a query function for the given subscriber."""
-    return lambda: to_rdf_literal(sub.get_latest_msg())
+    return lambda: to_rdf_literal(sub.get_latest())
+
+
+def make_tf_position_query_fn(lookup: TransformPositionLookup):
+    """Create the ``qt:tfPosition(frame, referenceFrame)`` function."""
+
+    def tf_position(frame, reference_frame):
+        try:
+            frame_name = rdf_literal_to_python(frame)
+            reference_frame_name = rdf_literal_to_python(reference_frame)
+        except (TypeError, ValueError):
+            return None
+
+        if not isinstance(frame_name, str) or not isinstance(reference_frame_name, str):
+            return None
+        return to_rdf_literal(lookup.get_position(frame_name, reference_frame_name))
+
+    return tf_position
 
 
 class SubscriptionManager:
@@ -67,6 +87,7 @@ class SubscriptionManager:
         # Populated by start(), torn down by stop().
         self._buffer: tf2_ros.Buffer | None = None
         self._listener: tf2_ros.TransformListener | None = None
+        self._tf_position_lookup: TransformPositionLookup | None = None
         self.topic_query_subs: dict[str, TopicLatestSubscriber] = {}
         self.tf_query_subs: dict[str, TransformLatestSubscriber] = {}
         self.insertion_subs: dict[str, InsertionSubscriber] = {}
@@ -74,6 +95,15 @@ class SubscriptionManager:
     def start(self):
         self._buffer = tf2_ros.Buffer()
         self._listener = tf2_ros.TransformListener(self._buffer, self.node)
+        self._tf_position_lookup = TransformPositionLookup(
+            buffer=self._buffer,
+            clock=self.node.get_clock(),
+            logger=self.logger.get_child(TF_POSITION_FUNCTION_NAME),
+        )
+        self.kb.add_query_time_function(
+            TF_POSITION_FUNCTION_NAME,
+            make_tf_position_query_fn(self._tf_position_lookup),
+        )
 
         env = Environment(
             loader=FileSystemLoader(self.templates_dir),
@@ -84,6 +114,11 @@ class SubscriptionManager:
         env.filters['serialize'] = _serialize_filter
 
         self._load_topic_query_subs(self.config.query_time_topic_subscribers)
+        if self.config.query_time_tf_subscribers:
+            self.logger.warning(
+                'query_time_tf_subscribers is deprecated; use '
+                'qt:tfPosition(frame, referenceFrame) instead'
+            )
         self._load_tf_query_subs(self.config.query_time_tf_subscribers)
         self._load_insertion_subs(
             self.config.insertion_subscribers,
@@ -97,12 +132,14 @@ class SubscriptionManager:
             self.kb.add_query_time_function(name, make_query_fn(sub))
 
         self.logger.info(
-            f'Started — query-time: {list(all_query_subs.keys())}, '
+            f'Started - query-time: '
+            f'{[TF_POSITION_FUNCTION_NAME, *all_query_subs.keys()]}, '
             f'insertion: {list(self.insertion_subs.keys())}'
         )
 
     def stop(self):
         # Unregister SPARQL functions before tearing down what backs them.
+        self.kb.remove_query_time_function(TF_POSITION_FUNCTION_NAME)
         for name in {**self.topic_query_subs, **self.tf_query_subs}:
             self.kb.remove_query_time_function(name)
 
@@ -118,6 +155,7 @@ class SubscriptionManager:
             self._listener.unregister()
         self._buffer = None
         self._listener = None
+        self._tf_position_lookup = None
 
         self.logger.info('Stopped')
 

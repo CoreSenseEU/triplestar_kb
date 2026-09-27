@@ -1,8 +1,7 @@
 import time
 from typing import Any
 
-from geometry_msgs.msg import TransformStamped
-import rclpy
+from geometry_msgs.msg import Vector3
 from rclpy.lifecycle import LifecycleNode
 from rclpy.node import Node
 from rclpy.time import Time
@@ -87,6 +86,39 @@ class TopicLatestSubscriber(BaseLatestSubscriber):
         return self._latest_msg
 
 
+class TransformPositionLookup:
+    """Look up fresh frame positions from a TF buffer without blocking."""
+
+    def __init__(self, buffer: tf2_ros.Buffer, clock, logger, max_age_sec: float = 2.0):
+        self._buffer = buffer
+        self._clock = clock
+        self._logger = logger
+        self._max_age_nanoseconds = int(max_age_sec * 1e9)
+
+    def get_position(self, frame: str, reference_frame: str) -> Vector3 | None:
+        """Return *frame*'s origin in *reference_frame*, or ``None`` if unavailable."""
+        try:
+            # Omitting a timeout makes this an immediate lookup. A blocking lookup from
+            # a query callback could prevent this node's executor from receiving TF.
+            transform = self._buffer.lookup_transform(reference_frame, frame, Time())
+        except Exception as e:  # noqa: BLE001
+            self._logger.warning(
+                f'TF lookup failed for {frame} in reference frame {reference_frame}: {e}'
+            )
+            return None
+
+        stamp = transform.header.stamp
+        stamp_nanoseconds = stamp.sec * 1_000_000_000 + stamp.nanosec
+        age_nanoseconds = self._clock.now().nanoseconds - stamp_nanoseconds
+        if age_nanoseconds >= self._max_age_nanoseconds:
+            self._logger.warning(
+                f'TF lookup for {frame} in reference frame {reference_frame} is stale'
+            )
+            return None
+
+        return transform.transform.translation
+
+
 class TransformLatestSubscriber(BaseLatestSubscriber):
     def __init__(
         self,
@@ -103,18 +135,12 @@ class TransformLatestSubscriber(BaseLatestSubscriber):
         self._to_frame = to_frame
         self._buffer = buffer
         self._listener = listener
+        self._lookup = TransformPositionLookup(
+            buffer=self._buffer,
+            clock=self._node.get_clock(),
+            logger=self._logger,
+            max_age_sec=self._max_age_sec,
+        )
 
-    def get_latest(self) -> TransformStamped | None:
-        try:
-            transform = self._buffer.lookup_transform(
-                self._to_frame,
-                self._from_frame,
-                Time(),
-                timeout=rclpy.duration.Duration(seconds=1.0),  # type: ignore
-            )
-            return transform.transform.translation
-        except Exception as e:  # noqa: BLE001
-            self._logger.warning(
-                f'TF lookup failed for {self._from_frame} -> {self._to_frame}: {e}'
-            )
-            return None
+    def get_latest(self) -> Vector3 | None:
+        return self._lookup.get_position(self._from_frame, self._to_frame)
