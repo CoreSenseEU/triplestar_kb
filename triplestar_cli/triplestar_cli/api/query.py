@@ -5,7 +5,6 @@ from ros2service.api import get_service_names
 from ros2service.api import get_service_names_and_types
 from rosidl_runtime_py.utilities import get_service
 from triplestar_core.service_contract import QUERY_SERVICE_PREFIX
-
 from triplestar_msgs.msg import QuerySubstitution
 from triplestar_msgs.srv import QueryInfo
 

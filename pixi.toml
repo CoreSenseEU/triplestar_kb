@@ -1,0 +1,84 @@
+[workspace]
+name = "triplestar_kb"
+description = "ROS 2 Jazzy knowledge base backed by Oxigraph"
+channels = ["https://prefix.dev/robostack-jazzy", "https://prefix.dev/conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
+
+[activation]
+scripts = ["scripts/pixi_activate.sh"]
+
+[dependencies]
+python = "3.12.*"
+
+# Build tooling
+colcon-common-extensions = "*"
+compilers = "*"
+cmake = "*"
+ninja = "*"
+pkg-config = "*"
+
+# ROS 2 Jazzy, mirroring the package.xml dependencies
+ros-jazzy-ros-base = "*"
+ros-jazzy-ament-cmake = "*"
+ros-jazzy-ament-cmake-python = "*"
+ros-jazzy-ament-index-python = "*"
+ros-jazzy-builtin-interfaces = "*"
+ros-jazzy-geometry-msgs = "*"
+ros-jazzy-launch = "*"
+ros-jazzy-launch-ros = "*"
+ros-jazzy-lifecycle-msgs = "*"
+ros-jazzy-rcl-interfaces = "*"
+ros-jazzy-rclpy = "*"
+ros-jazzy-ros2cli = "*"
+ros-jazzy-ros2launch = "*"
+ros-jazzy-ros2service = "*"
+ros-jazzy-ros2topic = "*"
+ros-jazzy-rosidl-default-generators = "*"
+ros-jazzy-rosidl-default-runtime = "*"
+ros-jazzy-rosidl-runtime-py = "*"
+ros-jazzy-sensor-msgs = "*"
+ros-jazzy-std-msgs = "*"
+ros-jazzy-std-srvs = "*"
+ros-jazzy-tf2-ros = "*"
+ros-jazzy-visualization-msgs = "*"
+
+# Python libraries (the python3-* rosdep keys)
+cookiecutter = "*"
+jinja2 = "*"
+opentelemetry-api = "*"
+oxrdflib = "*"
+pillow = "*"
+# python3-pydantic resolves to pydantic 1.10 on Ubuntu Noble, the Jazzy apt target.
+pydantic = "1.10.*"
+pyoxigraph = "*"
+python-graphviz = "*"
+pyyaml = "*"
+rdflib = "*"
+reasonable = "*"
+rich = "*"
+shapely = "*"
+
+# Test dependencies
+opentelemetry-sdk = "*"
+# Jazzy's launch_testing pytest plugin uses the `path` hook argument removed in pytest 9.
+pytest = "<9"
+ros-jazzy-ament-copyright = "*"
+ros-jazzy-ament-flake8 = "*"
+ros-jazzy-ament-lint-auto = "*"
+ros-jazzy-ament-lint-common = "*"
+ros-jazzy-ament-pep257 = "*"
+
+[tasks.build]
+description = "Build all packages into build/, install/ and log/ inside this checkout"
+cmd = "colcon build --symlink-install --cmake-args -G Ninja -Wno-unused-cli -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPython3_FIND_VIRTUALENV=ONLY"
+
+[tasks.test]
+description = "Run all package tests; fails on any failed, errored or missing test result"
+cmd = "colcon test; colcon test-result --verbose"
+depends-on = ["build"]
+
+[tasks.launch]
+description = "Launch a TriplestarKB bringup package: pixi run launch <bringup_name> [launch arguments]"
+# Activation runs before the build dependency, so source the fresh install space here.
+cmd = "bash -c 'source install/local_setup.bash && exec ros2 triplestar bringup launch \"$@\"' launch"
+depends-on = ["build"]

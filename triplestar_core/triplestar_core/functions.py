@@ -4,7 +4,6 @@ import functools
 from types import FunctionType
 
 import pyoxigraph as ox
-
 from triplestar_core.conversions import rdf_literal_to_python
 from triplestar_core.conversions import to_rdf_literal
 

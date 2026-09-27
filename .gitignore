@@ -2,3 +2,12 @@
 *.pt
 *.venv
 docs/site/
+
+# colcon workspace output (each checkout is its own workspace)
+/build/
+/install/
+/log/
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml

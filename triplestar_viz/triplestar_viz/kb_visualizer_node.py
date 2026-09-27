@@ -7,7 +7,6 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from triplestar_msgs.srv import SetVizQuery
-
 from triplestar_viz.core import RDFStarVisualizer
 
 

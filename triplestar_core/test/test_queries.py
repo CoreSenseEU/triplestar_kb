@@ -5,7 +5,7 @@ from pyoxigraph import Literal
 from pyoxigraph import NamedNode
 from pyoxigraph import Quad
 import pytest
-from triplestar_core.knowledge_base import TriplestarKnowledgeBase
+from triplestar_core.knowledge_base import KnowledgeBase
 
 # =============================================================================
 #  Fixtures
@@ -17,7 +17,7 @@ _DATA_DIR = Path(__file__).parent / 'data'
 @pytest.fixture
 def kb():
     """KB with no data."""
-    return TriplestarKnowledgeBase(store_path=None, base_iri='http://example.org')
+    return KnowledgeBase(store_path=None, base_iri='http://example.org')
 
 
 @pytest.fixture
@@ -128,7 +128,7 @@ class TestSubstitutions:
         result = kb_with_literal.query('ASK WHERE { ?s ?p ?o }', substitutions={'o': term})
         assert result is expected
 
-    def test_invalid_substitution_raises(self, kb: TriplestarKnowledgeBase) -> None:
+    def test_invalid_substitution_raises(self, kb: KnowledgeBase) -> None:
         with pytest.raises(Exception):  # noqa: B017
             kb.query(
                 'ASK { ?s <http://example.org/p> <http://example.org/y> }',

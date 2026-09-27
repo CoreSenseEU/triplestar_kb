@@ -1,9 +1,8 @@
 from rich.console import Console
 from rich.json import JSON
 from ros2cli.verb import VerbExtension
-
-from triplestar_cli.api import QueryNameCompleter
 from triplestar_cli.api import call_triplestar_query
+from triplestar_cli.api import QueryNameCompleter
 
 console = Console()
 

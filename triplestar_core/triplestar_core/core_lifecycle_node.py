@@ -7,13 +7,12 @@ from ament_index_python import get_package_share_directory
 from rclpy.lifecycle import LifecycleNode
 from rclpy.lifecycle import LifecycleState
 from rclpy.lifecycle import TransitionCallbackReturn
-import yaml
-
 from triplestar_core.config import TriplestarConfig
 from triplestar_core.functions import registry
 from triplestar_core.knowledge_base import KnowledgeBase
 from triplestar_core.query_services.query_service_manager import QueryServiceManager
 from triplestar_core.subscriptions.subscriber_manager import SubscriptionManager
+import yaml
 
 # Exceptions we treat as "expected, fixable" configuration problems.
 # Returning FAILURE for these keeps the node alive and retryable instead

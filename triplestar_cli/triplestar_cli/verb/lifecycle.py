@@ -2,9 +2,8 @@ from lifecycle_msgs.msg import State
 from lifecycle_msgs.msg import Transition
 from rich.console import Console
 from ros2cli.verb import VerbExtension
-
-from triplestar_cli.api import DEFAULT_NODE_NAME
 from triplestar_cli.api import change_lifecycle_state
+from triplestar_cli.api import DEFAULT_NODE_NAME
 from triplestar_cli.api import get_lifecycle_state
 
 console = Console()

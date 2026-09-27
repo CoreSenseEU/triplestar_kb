@@ -56,6 +56,36 @@ ros2 triplestar bringup launch {your_custom_brigup_name}
 > :info: As seen in the above snippets, the `triplestar` cli provides convenient commands for common operations.
 
 
+## Develop with pixi
+
+[pixi](https://pixi.sh) sets up ROS 2 Jazzy and all dependencies from
+[RoboStack](https://robostack.github.io) inside the checkout, without a system ROS
+install or a container. `pixi.lock` pins the environment for `linux-64`,
+`linux-aarch64` and `osx-arm64`.
+
+```bash
+curl -fsSL https://pixi.sh/install.sh | sh  # install pixi once
+pixi install                                # create the environment in .pixi/
+pixi run build                              # colcon build into build/, install/, log/
+pixi run test                               # run all package tests
+```
+
+The checkout is its own colcon workspace, so every clone or git worktree builds in
+isolation. To run the node, generate a bringup package in the checkout and launch it
+(`launch` rebuilds first):
+
+```bash
+pixi run ros2 triplestar bringup new --name my_bringup
+pixi run launch my_bringup
+```
+
+`pixi shell` opens a shell with ROS and the built packages sourced, for commands like
+`ros2 triplestar query list`; after building inside it, run
+`source install/local_setup.bash` to pick up new packages. Do not source an
+apt-installed ROS `setup.bash` in that shell. Give each checkout its own
+`ROS_DOMAIN_ID` when running several side by side.
+
+
 ## Contributing
 
 Contributions are welcome. Please install [pre-commit](https://pre-commit.com/)

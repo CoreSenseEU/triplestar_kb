@@ -2,7 +2,6 @@
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
 from triplestar_core.tracing.csv_exporter import CSVSpanExporter
 
 
