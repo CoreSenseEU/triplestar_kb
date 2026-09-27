@@ -23,11 +23,8 @@ query_time_topic_subscribers:
     sparql_fn_name: "rosTime"
     target_msg_field: "clock"
 
-# Expose the latest transform as a query-time SPARQL function.
-query_time_tf_subscribers:
-  - from_frame: "base_link"
-    to_frame: "map"
-    sparql_fn_name: "robotPose"
+# TF positions are available without configuration through
+# qt:tfPosition(frame, referenceFrame).
 
 # Create ROS services backed by files from the queries/ directory.
 query_services:

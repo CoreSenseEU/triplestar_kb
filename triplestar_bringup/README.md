@@ -47,10 +47,8 @@ query_time_topic_subscribers:
     sparql_fn_name: "statusStamp"
     target_msg_field: "header.stamp"  # Optional; dotted nested paths are supported.
 
-query_time_tf_subscribers:
-  - from_frame: "base_link"
-    to_frame: "map"
-    sparql_fn_name: "robotPose"
+# TF positions need no subscriber configuration. Query them with
+# qt:tfPosition(frame, referenceFrame).
 
 query_services:
   - query_file: "get_robot_pose.sparql"
