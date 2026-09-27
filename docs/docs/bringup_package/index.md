@@ -3,39 +3,22 @@ Generate one with `ros2 triplestar bringup new` rather than copying a package by
 
 ## Folder Structure
 
-TriplestarKB assumes your custom config package to follow the directory structure of this package, so yaml config files in the config folder, so dont change the folder names.
+TriplestarKB expects custom bringup packages to keep the generated directory structure, including `config/triplestar.yaml`.
 
 ## Config Files
 
-There are three config files: `kb_params.yaml`, `query_services.yaml` and `subscribers.yaml`.
+All settings live in `config/triplestar.yaml`. It contains:
 
-### `kb_params.yaml`
+- `knowledge_base` settings (`store_path`, `base_iri`, `clear_on_startup`, and `preload_files`);
+- lists of insertion, query-time topic, and query-time TF subscribers; and
+- a list of query services.
 
-This config file contains the path where `oxigraph` will store data, which files to preload into the KB and what the name of the config package is.
-
-Specifying the name of your custom config package will allow the KB to access the share directory of that package, and find your custom preload, query and template files.
-
-The `base_iri` field is used to provide a default IRI to resolve relative IRIs to in sparql updates and queries.
-So, with a base IRI of "http://triplestar.local", `:robotA` will resolve to `http://triplestar.local/robotA`.
-
-Custom functions are available as prefix `fn`. So `fn:myCustomFunction` --> `http://triplestar.local/functions/myCustomFunction`.
-
-Query time subscribers functions are available with the `qt` prefix.
-So `qt:robotPosition` --> `http://triplestar.local/query-time/robotPosition`
-
-### `query_services.yaml`
-
-This file is used to spin up query services using the files in your `queries` folder.
-
-### `subscribers.yaml`
-
-This file is used for configuring the topics the KB subscribes to to pull in data.
-The KB pulls in data using query time subscribers, query time tf subscribers and insertion subscribers.
+See the [configuration reference](config-files.md) for the schema and examples.
 
 ## Queries
 
 Put [SPARQL](https://www.w3.org/TR/sparql12-query/) queries in this folder.
-Those queries can then be used to setup query services using the `query_services.yaml` config file.
+These queries can be exposed as services through the `query_services` list in `config/triplestar.yaml`.
 
 ## Preload
 

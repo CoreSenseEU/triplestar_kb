@@ -2,6 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 from pydantic import Field
+from pydantic import root_validator
 from pydantic import validator
 
 
@@ -19,48 +20,55 @@ class InsertionSubscriberConfig(BaseModel):
 
 class QueryTimeTopicSubscriberConfig(BaseModel):
     topic: str
-    msg_field_name: str | None = None
+    sparql_fn_name: str
+    target_msg_field: str | None = None
 
 
 class QueryTimeTFSubscriberConfig(BaseModel):
     from_frame: str
     to_frame: str
+    sparql_fn_name: str
 
 
-class SubscribersConfig(BaseModel):
-    insertion_subscribers: dict[str, InsertionSubscriberConfig] = Field(default_factory=dict)
-    query_time_topic_subscribers: dict[str, QueryTimeTopicSubscriberConfig] = Field(
-        default_factory=dict
+class QueryServiceConfig(BaseModel):
+    query_file: str
+    service_name: str
+
+
+class TriplestarConfig(BaseModel):
+    knowledge_base: KBConfig
+    insertion_subscribers: list[InsertionSubscriberConfig] = Field(default_factory=list)
+    query_time_topic_subscribers: list[QueryTimeTopicSubscriberConfig] = Field(
+        default_factory=list
     )
-    query_time_tf_subscribers: dict[str, QueryTimeTFSubscriberConfig] = Field(default_factory=dict)
+    query_time_tf_subscribers: list[QueryTimeTFSubscriberConfig] = Field(default_factory=list)
+    query_services: list[QueryServiceConfig] = Field(default_factory=list)
 
     @validator(
         'insertion_subscribers',
         'query_time_topic_subscribers',
         'query_time_tf_subscribers',
+        'query_services',
         pre=True,
     )
     @classmethod
-    def _none_to_empty_dict(cls, value):
+    def _none_to_empty_list(cls, value):
         """Treat an empty YAML key (parsed as None) the same as an omitted one."""
-        return value if value is not None else {}
+        return value if value is not None else []
 
-    @property
-    def is_empty(self) -> bool:
-        return not (
-            self.insertion_subscribers
-            or self.query_time_topic_subscribers
-            or self.query_time_tf_subscribers
-        )
+    @root_validator
+    def _unique_names(cls, values):  # noqa: N805
+        query_time_names = [
+            subscriber.sparql_fn_name
+            for subscriber in values.get('query_time_topic_subscribers', [])
+        ] + [
+            subscriber.sparql_fn_name for subscriber in values.get('query_time_tf_subscribers', [])
+        ]
+        if len(query_time_names) != len(set(query_time_names)):
+            raise ValueError('Query-time SPARQL function names must be unique')
 
+        service_names = [service.service_name for service in values.get('query_services', [])]
+        if len(service_names) != len(set(service_names)):
+            raise ValueError('Query service names must be unique')
 
-class QueryServiceConfig(BaseModel):
-    query_file: str
-
-
-class QueryServicesConfig(BaseModel):
-    query_services: dict[str, QueryServiceConfig] = Field(default_factory=dict)
-
-    @property
-    def is_empty(self) -> bool:
-        return not self.query_services
+        return values

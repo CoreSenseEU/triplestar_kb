@@ -17,7 +17,7 @@ import tf2_ros
 from triplestar_core.config import InsertionSubscriberConfig
 from triplestar_core.config import QueryTimeTFSubscriberConfig
 from triplestar_core.config import QueryTimeTopicSubscriberConfig
-from triplestar_core.config import SubscribersConfig
+from triplestar_core.config import TriplestarConfig
 from triplestar_core.conversions import to_rdf_literal
 from triplestar_core.knowledge_base import KnowledgeBase
 from triplestar_core.subscriptions.insertion_subscriber import InsertionSubscriber
@@ -52,7 +52,7 @@ class SubscriptionManager:
     def __init__(
         self,
         node: Node | LifecycleNode,
-        config: SubscribersConfig,
+        config: TriplestarConfig,
         kb: KnowledgeBase,
         templates_dir: Path,
     ):
@@ -138,8 +138,9 @@ class SubscriptionManager:
         msg_type = get_msg_class(self.node, topic, include_hidden_topics=True)
         return msg_type if msg_type else None
 
-    def _load_topic_query_subs(self, config: dict[str, QueryTimeTopicSubscriberConfig]) -> None:
-        for name, sub in config.items():
+    def _load_topic_query_subs(self, config: list[QueryTimeTopicSubscriberConfig]) -> None:
+        for sub in config:
+            name = sub.sparql_fn_name
             msg_type = self.try_msg_class(sub.topic)
             if msg_type is None:
                 self.logger.error(f'Unable to determine message class for topic: {sub.topic}')
@@ -151,7 +152,7 @@ class SubscriptionManager:
                     logger=self.logger,
                     topic=sub.topic,
                     msg_type=msg_type,
-                    msg_field_name=sub.msg_field_name,
+                    target_msg_field=sub.target_msg_field,
                     callback_group=self.subscriber_cb_group,
                 )
             except (KeyError, RuntimeError) as e:
@@ -159,7 +160,7 @@ class SubscriptionManager:
 
     def _load_tf_query_subs(
         self,
-        config: dict[str, QueryTimeTFSubscriberConfig],
+        config: list[QueryTimeTFSubscriberConfig],
     ) -> None:
         assert self._buffer is not None, (
             'buffer must be initialized before loading TF query subscribers'
@@ -168,7 +169,8 @@ class SubscriptionManager:
             'listener must be initialized before loading TF query subscribers'
         )
 
-        for name, sub in config.items():
+        for sub in config:
+            name = sub.sparql_fn_name
             try:
                 self.tf_query_subs[name] = TransformLatestSubscriber(
                     node=self.node,
@@ -183,11 +185,12 @@ class SubscriptionManager:
 
     def _load_insertion_subs(
         self,
-        config: dict[str, InsertionSubscriberConfig],
+        config: list[InsertionSubscriberConfig],
         env: Environment,
         update_fn: Callable,
     ) -> None:
-        for name, sub in config.items():
+        for sub in config:
+            name = sub.topic
             try:
                 template = env.get_template(sub.template)
             except TemplateNotFound as e:

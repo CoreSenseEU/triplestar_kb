@@ -16,12 +16,11 @@ instead.
 
 ## Configure the subscriber
 
-Add an entry to `config/subscribers.yaml` in your bringup package:
+Add an entry to the `insertion_subscribers` list in `config/triplestar.yaml`:
 
 ```yaml
 insertion_subscribers:
-  battery_readings:
-    topic: /battery
+  - topic: /battery
     template: battery-reading.sparql.tmpl
 ```
 

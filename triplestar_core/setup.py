@@ -5,7 +5,7 @@ package_name = 'triplestar_core'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='0.1.0',
     packages=find_packages(exclude=['test', 'scripts', 'resource']),
     data_files=[
         (

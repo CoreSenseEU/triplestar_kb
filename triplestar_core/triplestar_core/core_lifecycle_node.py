@@ -7,9 +7,7 @@ from ament_index_python import get_package_share_directory
 from rclpy.lifecycle import LifecycleNode
 from rclpy.lifecycle import LifecycleState
 from rclpy.lifecycle import TransitionCallbackReturn
-from triplestar_core.config import KBConfig
-from triplestar_core.config import QueryServicesConfig
-from triplestar_core.config import SubscribersConfig
+from triplestar_core.config import TriplestarConfig
 from triplestar_core.functions import registry
 from triplestar_core.knowledge_base import KnowledgeBase
 from triplestar_core.query_services.query_service_manager import QueryServiceManager
@@ -33,7 +31,7 @@ class TriplestarCoreNode(LifecycleNode):
         self.query_service_manager: QueryServiceManager | None = None
         self.query_service = None
         self.share_dir: Path | None = None
-        self.config: KBConfig | None = None
+        self.config: TriplestarConfig | None = None
 
         self.declare_parameter('bringup_package', 'triplestar_bringup')
         # allow setting this parameter to override with a single file to preload
@@ -59,7 +57,7 @@ class TriplestarCoreNode(LifecycleNode):
 
         try:
             self.share_dir = self._resolve_bringup_share_dir()
-            self.config = self._load_kb_config(self.share_dir / 'config' / 'kb_params.yaml')
+            self.config = self._load_config(self.share_dir / 'config' / 'triplestar.yaml')
 
             self._init_knowledge_base()
             self._clear_and_preload(self.share_dir)
@@ -72,7 +70,8 @@ class TriplestarCoreNode(LifecycleNode):
             self.get_logger().error(f'Configuration failed: {e}')
             return TransitionCallbackReturn.FAILURE
         except Exception:  # noqa: BLE001 follow best practices and log the exception
-            self.get_logger().error(f'Unexpected error during configure:\n{traceback.format_exc()}')
+            error = f'Unexpected error during configure:\n{traceback.format_exc()}'
+            self.get_logger().error(error)
             return TransitionCallbackReturn.ERROR
 
         self.get_logger().info('KB node configured successfully')
@@ -177,9 +176,9 @@ class TriplestarCoreNode(LifecycleNode):
         assert self.config is not None, 'No config loaded'
 
         self.kb = KnowledgeBase(
-            store_path=self.config.store_path,
+            store_path=self.config.knowledge_base.store_path,
             logger=self.get_logger(),
-            base_iri=self.config.base_iri,
+            base_iri=self.config.knowledge_base.base_iri,
         )
         self.get_logger().info(f'Using store path: {self.kb.store_path}')
 
@@ -188,14 +187,16 @@ class TriplestarCoreNode(LifecycleNode):
             'No config loaded or KB not initialized'
         )
 
-        if self.config.clear_on_startup:
+        if self.config.knowledge_base.clear_on_startup:
             self.kb.clear()
             self.get_logger().info('Cleared store on startup')
 
         preload_dir = share_dir / 'preload'
         override_preload_file = self.get_parameter('override_preload_file').value
         preload_files = (
-            [override_preload_file] if override_preload_file else self.config.preload_files
+            [override_preload_file]
+            if override_preload_file
+            else self.config.knowledge_base.preload_files
         )
         if override_preload_file:
             self.get_logger().warn(f'Overriding preload file: {override_preload_file}')
@@ -241,16 +242,12 @@ class TriplestarCoreNode(LifecycleNode):
         if self.kb is None:
             raise RuntimeError('KB not initialized')
 
-        subscriber_config = self._load_subscribers_config(share_dir / 'config' / 'subscribers.yaml')
-        self.subscriber_manager = (
-            SubscriptionManager(
-                self,
-                config=subscriber_config,
-                kb=self.kb,
-                templates_dir=share_dir / 'templates',
-            )
-            if subscriber_config is not None
-            else None
+        assert self.config is not None
+        self.subscriber_manager = SubscriptionManager(
+            self,
+            config=self.config,
+            kb=self.kb,
+            templates_dir=share_dir / 'templates',
         )
 
     def _build_query_service_manager(self, share_dir: Path):
@@ -259,17 +256,12 @@ class TriplestarCoreNode(LifecycleNode):
 
         Only start subscribing when start() is called
         """
-        assert self.kb is not None
-        query_config = self._load_query_service_config(share_dir / 'config' / 'query_services.yaml')
-        self.query_service_manager = (
-            QueryServiceManager(
-                self,
-                config=query_config,
-                kb=self.kb,
-                queries_dir=share_dir / 'queries',
-            )
-            if query_config is not None
-            else None
+        assert self.kb is not None and self.config is not None
+        self.query_service_manager = QueryServiceManager(
+            self,
+            config=self.config,
+            kb=self.kb,
+            queries_dir=share_dir / 'queries',
         )
 
     def _load_kb_functions_into_kb(self, share_dir: Path):
@@ -294,42 +286,19 @@ class TriplestarCoreNode(LifecycleNode):
             raise TypeError(f'Expected dict in YAML: {path}')
         return data
 
-    def _load_kb_config(self, path: Path) -> KBConfig:
-        return KBConfig.parse_obj(self._load_yaml(path))
-
-    def _load_subscribers_config(self, path: Path) -> SubscribersConfig | None:
+    def _load_config(self, path: Path) -> TriplestarConfig:
         if not path.is_file():
-            self.get_logger().warn(
-                f'Subscribers config file not found: {path}; skipping subscribers'
-            )
-            return None
+            legacy_files = ('kb_params.yaml', 'subscribers.yaml', 'query_services.yaml')
+            found_legacy_files = [name for name in legacy_files if (path.parent / name).is_file()]
+            if found_legacy_files:
+                self.get_logger().warn(
+                    'The split Triplestar configuration format is no longer supported. '
+                    'Combine kb_params.yaml, subscribers.yaml, and query_services.yaml into '
+                    'config/triplestar.yaml. See the bringup configuration documentation.'
+                )
+            raise FileNotFoundError(f'Triplestar config file not found: {path}')
 
-        config = SubscribersConfig.parse_obj(self._load_yaml(path))
-
-        if config.is_empty:
-            self.get_logger().warn(
-                f'Subscribers config file is empty: {path}; skipping subscribers'
-            )
-            return None
-
-        return config
-
-    def _load_query_service_config(self, path: Path) -> QueryServicesConfig | None:
-        if not path.is_file():
-            self.get_logger().warn(
-                f'Query services config file not found: {path}; skipping query services'
-            )
-            return None
-
-        config = QueryServicesConfig.parse_obj(self._load_yaml(path))
-
-        if config.is_empty:
-            self.get_logger().warn(
-                f'Query services config file is empty: {path}; skipping query services'
-            )
-            return None
-
-        return config
+        return TriplestarConfig.parse_obj(self._load_yaml(path))
 
     def _load_kb_functions(self, folder: Path):
         if not folder.is_dir():
