@@ -28,12 +28,6 @@ query_time_topic_subscribers:
     sparql_fn_name: "statusStamp"
     target_msg_field: "header.stamp"
 
-# Deprecated: use the built-in qt:tfPosition function instead.
-query_time_tf_subscribers:
-  - from_frame: "base_link"
-    to_frame: "map"
-    sparql_fn_name: "robotPose"
-
 query_services:
   - query_file: "count_triples.sparql"
     service_name: "count_triples"
