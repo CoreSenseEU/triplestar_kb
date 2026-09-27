@@ -69,21 +69,21 @@ class RDFStarVisualizer:
     def __init__(
         self,
         comment: str = 'RDF-star Graph',
-        format: str = 'PNG',
+        format: str = 'PNG',  # noqa: A002
         engine: str = 'sfdp',
         styles: dict[str, dict[str, Any]] | None = None,
         prefixes: dict[str, str] | None = None,
         show_legend: bool = True,
     ):
-        """Initialize the visualizer.
+        """
+        Initialize the visualizer.
 
-        Args:
-            comment: Comment for the graph
-            format: Output format (png, svg, etc.)
-            engine: Graphviz engine to use
-            styles: Custom styles dictionary to override defaults
-            prefixes: Custom prefixes dictionary (namespace -> prefix)
-            show_legend: Whether to show a legend with used prefixes
+        :param comment: Comment for the graph
+        :param format: Output format (png, svg, etc.)
+        :param engine: Graphviz engine to use
+        :param styles: Custom styles dictionary to override defaults
+        :param prefixes: Custom prefixes dictionary (namespace -> prefix)
+        :param show_legend: Whether to show a legend with used prefixes
         """
         self.comment = comment
         self.format = format
@@ -147,7 +147,8 @@ class RDFStarVisualizer:
                     namespace.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                 )
                 legend_rows.append(
-                    f'<TR><TD ALIGN="LEFT"><B>{prefix}:</B></TD><TD ALIGN="LEFT">{escaped_ns}</TD></TR>'
+                    f'<TR><TD ALIGN="LEFT"><B>{prefix}:</B></TD>'
+                    f'<TD ALIGN="LEFT">{escaped_ns}</TD></TR>'
                 )
 
             legend_html = f"""<

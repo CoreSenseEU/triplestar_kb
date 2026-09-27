@@ -40,7 +40,7 @@ def infer_output_format(path: Path) -> str:
 
 
 def main():
-    """Main CLI entry point."""
+    """Run the RDF-star visualizer command line interface."""
     parser = argparse.ArgumentParser(
         description='Visualize RDF* graphs using Graphviz',
         epilog="""

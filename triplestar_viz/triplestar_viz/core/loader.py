@@ -21,19 +21,17 @@ class RDFLoader:
     @staticmethod
     def from_file(
         path: str | Path,
-        format: str = 'turtle',
+        format: str = 'turtle',  # noqa: A002
     ) -> Store:
         """
         Load RDF data from a file into a new in-memory store.
 
-        Args:
-            path: Path to the RDF file
-            format: RDF format (turtle, ntriples, rdfxml, etc.)
+        :param path: Path to the RDF file
+        :param format: RDF format (turtle, ntriples, rdfxml, etc.)
+        :return: A pyoxigraph Store containing the loaded data
 
-        Returns:
-            A pyoxigraph Store containing the loaded data
+        Example::
 
-        Example:
             >>> store = RDFLoader.from_file("data.ttl")
             >>> store = RDFLoader.from_file("data.nt", format="ntriples")
         """
@@ -75,14 +73,12 @@ class RDFLoader:
         """
         Open an existing pyoxigraph store.
 
-        Args:
-            store_path: Path to the store directory
-            read_only: If True, open in read-only mode
+        :param store_path: Path to the store directory
+        :param read_only: If True, open in read-only mode
+        :return: A pyoxigraph Store
 
-        Returns:
-            A pyoxigraph Store
+        Example::
 
-        Example:
             >>> store = RDFLoader.from_store("/tmp/kb_store")
         """
         store_path = Path(store_path)
@@ -103,15 +99,13 @@ class RDFLoader:
         """
         Execute a SPARQL CONSTRUCT query on a store.
 
-        Args:
-            store: The RDF store to query
-            query: SPARQL CONSTRUCT query string
-            custom_functions: Optional dict of custom SPARQL functions
+        :param store: The RDF store to query
+        :param query: SPARQL CONSTRUCT query string
+        :param custom_functions: Optional dict of custom SPARQL functions
+        :return: Iterator of Quad or Triple objects
 
-        Returns:
-            Iterator of Quad or Triple objects
+        Example::
 
-        Example:
             >>> query = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }"
             >>> results = RDFLoader.execute_query(store, query)
             >>> for triple in results:
@@ -127,13 +121,11 @@ class RDFLoader:
         """
         Load a SPARQL query from a file.
 
-        Args:
-            path: Path to the query file
+        :param path: Path to the query file
+        :return: Query string
 
-        Returns:
-            Query string
+        Example::
 
-        Example:
             >>> query = RDFLoader.load_query_from_file("query.rq")
         """
         path = Path(path)
@@ -148,13 +140,11 @@ class RDFLoader:
         """
         Get all quads from a store.
 
-        Args:
-            store: The RDF store
+        :param store: The RDF store
+        :return: Iterator of all quads in the store
 
-        Returns:
-            Iterator of all quads in the store
+        Example::
 
-        Example:
             >>> for quad in RDFLoader.get_all_quads(store):
             ...     print(quad)
         """
