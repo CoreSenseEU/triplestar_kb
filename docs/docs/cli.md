@@ -135,5 +135,5 @@ The status command cannot find the node
   the KB is namespaced or renamed.
 
 No query services are listed
-: Check that the node configured successfully and that
-  `config/query_services.yaml` contains entries.
+: Check that the node configured successfully and that the `query_services` list in
+  `config/triplestar.yaml` contains entries.
