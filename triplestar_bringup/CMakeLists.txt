@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.10)
 project(triplestar_bringup)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -23,7 +23,12 @@ if(BUILD_TESTING)
   # comment the line when this package is in a git repo and when
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
+  # the bringup template package.xml holds cookiecutter placeholders that cannot
+  # pass schema validation, so xmllint checks every other XML file explicitly
+  list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_xmllint)
   ament_lint_auto_find_test_dependencies()
+  find_package(ament_cmake_xmllint REQUIRED)
+  ament_xmllint(package.xml "bringup_template/{{cookiecutter.bringup_name}}/launch")
 endif()
 
 ament_package()
