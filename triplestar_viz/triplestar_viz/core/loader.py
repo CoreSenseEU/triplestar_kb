@@ -5,10 +5,14 @@ This module provides functions to load RDF data from various sources
 (files, stores) and execute SPARQL queries.
 """
 
+from collections.abc import Callable
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Callable, Dict, Iterator, Optional, Union
 
-from pyoxigraph import NamedNode, Quad, Store, Triple
+from pyoxigraph import NamedNode
+from pyoxigraph import Quad
+from pyoxigraph import Store
+from pyoxigraph import Triple
 
 
 class RDFLoader:
@@ -16,20 +20,18 @@ class RDFLoader:
 
     @staticmethod
     def from_file(
-        path: Union[str, Path],
-        format: str = 'turtle',
+        path: str | Path,
+        format: str = 'turtle',  # noqa: A002
     ) -> Store:
         """
         Load RDF data from a file into a new in-memory store.
 
-        Args:
-            path: Path to the RDF file
-            format: RDF format (turtle, ntriples, rdfxml, etc.)
+        :param path: Path to the RDF file
+        :param format: RDF format (turtle, ntriples, rdfxml, etc.)
+        :return: A pyoxigraph Store containing the loaded data
 
-        Returns:
-            A pyoxigraph Store containing the loaded data
+        Example::
 
-        Example:
             >>> store = RDFLoader.from_file("data.ttl")
             >>> store = RDFLoader.from_file("data.nt", format="ntriples")
         """
@@ -67,18 +69,16 @@ class RDFLoader:
         return store
 
     @staticmethod
-    def from_store(store_path: Union[str, Path], read_only: bool = True) -> Store:
+    def from_store(store_path: str | Path, read_only: bool = True) -> Store:
         """
         Open an existing pyoxigraph store.
 
-        Args:
-            store_path: Path to the store directory
-            read_only: If True, open in read-only mode
+        :param store_path: Path to the store directory
+        :param read_only: If True, open in read-only mode
+        :return: A pyoxigraph Store
 
-        Returns:
-            A pyoxigraph Store
+        Example::
 
-        Example:
             >>> store = RDFLoader.from_store("/tmp/kb_store")
         """
         store_path = Path(store_path)
@@ -94,20 +94,18 @@ class RDFLoader:
     def execute_query(
         store: Store,
         query: str,
-        custom_functions: Optional[Dict[NamedNode, Callable]] = None,
-    ) -> Iterator[Union[Quad, Triple]]:
+        custom_functions: dict[NamedNode, Callable] | None = None,
+    ) -> Iterator[Quad | Triple]:
         """
         Execute a SPARQL CONSTRUCT query on a store.
 
-        Args:
-            store: The RDF store to query
-            query: SPARQL CONSTRUCT query string
-            custom_functions: Optional dict of custom SPARQL functions
+        :param store: The RDF store to query
+        :param query: SPARQL CONSTRUCT query string
+        :param custom_functions: Optional dict of custom SPARQL functions
+        :return: Iterator of Quad or Triple objects
 
-        Returns:
-            Iterator of Quad or Triple objects
+        Example::
 
-        Example:
             >>> query = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }"
             >>> results = RDFLoader.execute_query(store, query)
             >>> for triple in results:
@@ -119,24 +117,22 @@ class RDFLoader:
             return store.query(query)
 
     @staticmethod
-    def load_query_from_file(path: Union[str, Path]) -> str:
+    def load_query_from_file(path: str | Path) -> str:
         """
         Load a SPARQL query from a file.
 
-        Args:
-            path: Path to the query file
+        :param path: Path to the query file
+        :return: Query string
 
-        Returns:
-            Query string
+        Example::
 
-        Example:
             >>> query = RDFLoader.load_query_from_file("query.rq")
         """
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f'Query file not found: {path}')
 
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding='utf-8') as f:
             return f.read()
 
     @staticmethod
@@ -144,13 +140,11 @@ class RDFLoader:
         """
         Get all quads from a store.
 
-        Args:
-            store: The RDF store
+        :param store: The RDF store
+        :return: Iterator of all quads in the store
 
-        Returns:
-            Iterator of all quads in the store
+        Example::
 
-        Example:
             >>> for quad in RDFLoader.get_all_quads(store):
             ...     print(quad)
         """

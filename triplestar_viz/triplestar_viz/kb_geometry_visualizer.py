@@ -1,11 +1,12 @@
 import json
 
-import rclpy
 from geometry_msgs.msg import Point
+import rclpy
 from rclpy.node import Node
 from shapely import wkt
 from triplestar_msgs.srv import SPARQLQuery
-from visualization_msgs.msg import Marker, MarkerArray
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
 
 
 class KBGeometryVisualizer(Node):
@@ -18,9 +19,9 @@ class KBGeometryVisualizer(Node):
         self.get_logger().info('KB Geometry Visualizer node started')
 
     def request_geometries_from_kb(self, sparql: str):
-        client = self.create_client(SPARQLQuery, '/triplestar_core/query')
+        client = self.create_client(SPARQLQuery, '/triplestar/sparql')
         if not client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().warn('Waiting for /triplestar_core/query service...')
+            self.get_logger().warn('Waiting for /triplestar/sparql service...')
             return
 
         request = SPARQLQuery.Request()

@@ -1,90 +1,165 @@
-import time
+import base64
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, Type
+import time
 
+from jinja2 import Environment
+from jinja2 import FileSystemLoader
+from jinja2 import StrictUndefined
+from jinja2 import TemplateNotFound
 import rclpy
-import tf2_ros
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.lifecycle import LifecycleNode
 from rclpy.node import Node
+from rclpy.serialization import serialize_message
 from ros2topic.api import get_msg_class
-
-from triplestar_core.config.schemas import (
-    InsertionSubscriberConfig,
-    QueryTimeTFSubscriberConfig,
-    QueryTimeTopicSubscriberConfig,
-    SubscribersConfig,
-)
-from triplestar_core.knowledge_base import TriplestarKnowledgeBase
-from triplestar_core.msg_to_rdf import ros_msg_to_literal
+import tf2_ros
+from triplestar_core.config import InsertionSubscriberConfig
+from triplestar_core.config import QueryTimeTFSubscriberConfig
+from triplestar_core.config import QueryTimeTopicSubscriberConfig
+from triplestar_core.config import TF_POSITION_FUNCTION_NAME
+from triplestar_core.config import TriplestarConfig
+from triplestar_core.conversions import rdf_literal_to_python
+from triplestar_core.conversions import to_rdf_literal
+from triplestar_core.knowledge_base import KnowledgeBase
 from triplestar_core.subscriptions.insertion_subscriber import InsertionSubscriber
-from triplestar_core.subscriptions.query_time_subscriber import (
-    TopicLatestSubscriber,
-    TransformLatestSubscriber,
-)
+from triplestar_core.subscriptions.query_time_subscriber import TopicLatestSubscriber
+from triplestar_core.subscriptions.query_time_subscriber import TransformLatestSubscriber
+from triplestar_core.subscriptions.query_time_subscriber import TransformPositionLookup
+
+
+def _serialize_filter(value) -> str:
+    return base64.b64encode(serialize_message(value)).decode('utf-8')
 
 
 def _rdf_filter(value) -> str:
-    literal = ros_msg_to_literal(value)
+    literal = to_rdf_literal(value)
     return str(literal) if literal is not None else repr(value)
 
 
-# Returns a function that queries the latest message from the subscriber and converts it to an RDF literal, which can be registered in the KB.
 def make_query_fn(sub):
-    return lambda: ros_msg_to_literal(sub.get_latest_msg())
+    """Create a query function for the given subscriber."""
+    return lambda: to_rdf_literal(sub.get_latest())
+
+
+def make_tf_position_query_fn(lookup: TransformPositionLookup):
+    """Create the ``qt:tfPosition(frame, referenceFrame)`` function."""
+
+    def tf_position(frame, reference_frame):
+        try:
+            frame_name = rdf_literal_to_python(frame)
+            reference_frame_name = rdf_literal_to_python(reference_frame)
+        except (TypeError, ValueError):
+            return None
+
+        if not isinstance(frame_name, str) or not isinstance(reference_frame_name, str):
+            return None
+        return to_rdf_literal(lookup.get_position(frame_name, reference_frame_name))
+
+    return tf_position
 
 
 class SubscriptionManager:
+    """
+    Owns all runtime subscriptions (query-time topic/TF + insertion).
+
+    Construct once in on_configure (cheap - just stores config/refs).
+    start()/stop() from on_activate/on_deactivate do the actual topic
+    introspection and subscription creation/teardown, so it can be safely
+    redone if a subscribed topic isn't up yet.
+    """
+
     def __init__(
         self,
         node: Node | LifecycleNode,
-        config: SubscribersConfig,
-        kb: TriplestarKnowledgeBase,
+        config: TriplestarConfig,
+        kb: KnowledgeBase,
         templates_dir: Path,
     ):
         self.node = node
-        self.logger = node.get_logger().get_child('subscriber_manager')
+        self.config = config
+        self.kb = kb
+        self.templates_dir = templates_dir
+        self.logger = node.get_logger().get_child('subscribers')
 
         self.subscriber_cb_group = ReentrantCallbackGroup()
 
-        self._buffer = tf2_ros.Buffer()
-        self._listener = tf2_ros.TransformListener(self._buffer, node)
-
+        # Populated by start(), torn down by stop().
+        self._buffer: tf2_ros.Buffer | None = None
+        self._listener: tf2_ros.TransformListener | None = None
+        self._tf_position_lookup: TransformPositionLookup | None = None
         self.topic_query_subs: dict[str, TopicLatestSubscriber] = {}
         self.tf_query_subs: dict[str, TransformLatestSubscriber] = {}
         self.insertion_subs: dict[str, InsertionSubscriber] = {}
 
+    def start(self):
+        self._buffer = tf2_ros.Buffer()
+        self._listener = tf2_ros.TransformListener(self._buffer, self.node)
+        self._tf_position_lookup = TransformPositionLookup(
+            buffer=self._buffer,
+            clock=self.node.get_clock(),
+            logger=self.logger.get_child(TF_POSITION_FUNCTION_NAME),
+        )
+        self.kb.add_query_time_function(
+            TF_POSITION_FUNCTION_NAME,
+            make_tf_position_query_fn(self._tf_position_lookup),
+        )
+
         env = Environment(
-            loader=FileSystemLoader(templates_dir),
+            loader=FileSystemLoader(self.templates_dir),
             autoescape=False,
             undefined=StrictUndefined,
         )
         env.filters['rdf'] = _rdf_filter
+        env.filters['serialize'] = _serialize_filter
 
-        self._load_topic_query_subs(
-            config.query_time_topic_subscribers,
-        )
-        self._load_tf_query_subs(config.query_time_tf_subscribers)
+        self._load_topic_query_subs(self.config.query_time_topic_subscribers)
+        if self.config.query_time_tf_subscribers:
+            self.logger.warning(
+                'query_time_tf_subscribers is deprecated; use '
+                'qt:tfPosition(frame, referenceFrame) instead'
+            )
+        self._load_tf_query_subs(self.config.query_time_tf_subscribers)
         self._load_insertion_subs(
-            config.insertion_subscribers,
+            self.config.insertion_subscribers,
             env,
-            lambda sparql: kb.update(sparql),
+            lambda sparql: self.kb.update(sparql),
         )
 
         # Register query-time subscribers as custom SPARQL functions
         all_query_subs = {**self.topic_query_subs, **self.tf_query_subs}
-
         for name, sub in all_query_subs.items():
-            kb.add_query_time_function(name, make_query_fn(sub))
+            self.kb.add_query_time_function(name, make_query_fn(sub))
 
         self.logger.info(
-            f'SubscriberManager initialized — '
-            f'query-time: {list(all_query_subs.keys())}, '
+            f'Started - query-time: '
+            f'{[TF_POSITION_FUNCTION_NAME, *all_query_subs.keys()]}, '
             f'insertion: {list(self.insertion_subs.keys())}'
         )
 
-    def try_msg_class(self, topic: str, timeout_sec: float = 2.0) -> Optional[Type]:
+    def stop(self):
+        # Unregister SPARQL functions before tearing down what backs them.
+        self.kb.remove_query_time_function(TF_POSITION_FUNCTION_NAME)
+        for name in {**self.topic_query_subs, **self.tf_query_subs}:
+            self.kb.remove_query_time_function(name)
+
+        for sub in self.insertion_subs.values():
+            sub.destroy()
+        self.insertion_subs.clear()
+
+        for sub in self.topic_query_subs.values():
+            sub.destroy()
+        self.topic_query_subs.clear()
+
+        if self._listener is not None:
+            self._listener.unregister()
+        self._buffer = None
+        self._listener = None
+        self._tf_position_lookup = None
+
+        self.logger.info('Stopped')
+
+    def try_msg_class(self, topic: str, timeout_sec: float = 2.0) -> type | None:
         start = time.time()
         self.logger.info(f"Waiting for message class for topic '{topic}'...")
 
@@ -99,11 +174,11 @@ class SubscriptionManager:
             time.sleep(0.2)
 
         msg_type = get_msg_class(self.node, topic, include_hidden_topics=True)
-
         return msg_type if msg_type else None
 
-    def _load_topic_query_subs(self, config: dict[str, QueryTimeTopicSubscriberConfig]) -> None:
-        for name, sub in config.items():
+    def _load_topic_query_subs(self, config: list[QueryTimeTopicSubscriberConfig]) -> None:
+        for sub in config:
+            name = sub.sparql_fn_name
             msg_type = self.try_msg_class(sub.topic)
             if msg_type is None:
                 self.logger.error(f'Unable to determine message class for topic: {sub.topic}')
@@ -112,9 +187,10 @@ class SubscriptionManager:
             try:
                 self.topic_query_subs[name] = TopicLatestSubscriber(
                     node=self.node,
+                    logger=self.logger,
                     topic=sub.topic,
                     msg_type=msg_type,
-                    msg_field_name=sub.msg_field_name,
+                    target_msg_field=sub.target_msg_field,
                     callback_group=self.subscriber_cb_group,
                 )
             except (KeyError, RuntimeError) as e:
@@ -122,12 +198,21 @@ class SubscriptionManager:
 
     def _load_tf_query_subs(
         self,
-        config: dict[str, QueryTimeTFSubscriberConfig],
+        config: list[QueryTimeTFSubscriberConfig],
     ) -> None:
-        for name, sub in config.items():
+        assert self._buffer is not None, (
+            'buffer must be initialized before loading TF query subscribers'
+        )
+        assert self._listener is not None, (
+            'listener must be initialized before loading TF query subscribers'
+        )
+
+        for sub in config:
+            name = sub.sparql_fn_name
             try:
                 self.tf_query_subs[name] = TransformLatestSubscriber(
                     node=self.node,
+                    logger=self.logger,
                     from_frame=sub.from_frame,
                     to_frame=sub.to_frame,
                     buffer=self._buffer,
@@ -138,11 +223,12 @@ class SubscriptionManager:
 
     def _load_insertion_subs(
         self,
-        config: dict[str, InsertionSubscriberConfig],
+        config: list[InsertionSubscriberConfig],
         env: Environment,
         update_fn: Callable,
     ) -> None:
-        for name, sub in config.items():
+        for sub in config:
+            name = sub.topic
             try:
                 template = env.get_template(sub.template)
             except TemplateNotFound as e:
@@ -163,5 +249,5 @@ class SubscriptionManager:
                     msg_type=msg_type,
                     callback_group=self.subscriber_cb_group,
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 self.logger.error(f'Failed to create insertion subscriber "{name}": {e}')

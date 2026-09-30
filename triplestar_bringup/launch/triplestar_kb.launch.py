@@ -1,18 +1,10 @@
-import lifecycle_msgs
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    EmitEvent,
-    RegisterEventHandler,
-)
+from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
-from launch.events import matches_action
-from launch.substitutions import (
-    LaunchConfiguration,
-)
-from launch_ros.actions import LifecycleNode, Node
-from launch_ros.event_handlers import OnStateTransition
-from launch_ros.events.lifecycle import ChangeState
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import LifecycleNode
+from launch_ros.actions import Node
+from triplestar_bringup.lifecycle import configure_and_activate
 
 
 def generate_launch_description():
@@ -25,14 +17,14 @@ def generate_launch_description():
 
     bringup_package_arg = DeclareLaunchArgument(
         'bringup-package',
-        default_value='triplestar_bringup',
+        default_value='',
         description='Name of custom TriplestarKB bringup package',
     )
     bringup_package = LaunchConfiguration('bringup-package')
 
     triplestar_core_node = LifecycleNode(
         package='triplestar_core',
-        executable='kb_node',
+        executable='triplestar_kb_node',
         name='triplestar_core',
         namespace='',
         output='screen',
@@ -41,28 +33,7 @@ def generate_launch_description():
         emulate_tty=True,
     )
 
-    triplestar_core_node_config_event = EmitEvent(
-        event=ChangeState(
-            lifecycle_node_matcher=matches_action(triplestar_core_node),
-            transition_id=lifecycle_msgs.msg.Transition.TRANSITION_CONFIGURE,
-        )
-    )
-
-    triplestar_core_node_activate_event = RegisterEventHandler(
-        OnStateTransition(
-            target_lifecycle_node=triplestar_core_node,
-            start_state='configuring',
-            goal_state='inactive',
-            entities=[
-                EmitEvent(
-                    event=ChangeState(
-                        lifecycle_node_matcher=matches_action(triplestar_core_node),
-                        transition_id=lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE,
-                    )
-                )
-            ],
-        )
-    )
+    lifecycle_events = configure_and_activate(triplestar_core_node)
 
     enable_geometry_visualizer_arg = DeclareLaunchArgument(
         'enable-geometry-visualizer',
@@ -84,8 +55,7 @@ def generate_launch_description():
             bringup_package_arg,
             enable_geometry_visualizer_arg,
             triplestar_core_node,
-            triplestar_core_node_config_event,
-            triplestar_core_node_activate_event,
+            *lifecycle_events,
             triplestar_geometry_visualizer,
         ]
     )

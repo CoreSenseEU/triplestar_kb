@@ -1,54 +1,100 @@
 # TriplestarKB
 
-TriplestarKB is a ROS2-enabled knowledge base, backed by the [oxigraph](https://github.com/oxigraph/oxigraph) SPARQL graph database.
+TriplestarKB is a ROS 2 enabled knowledge base backed by [Oxigraph](https://github.com/oxigraph/oxigraph), a high-performance SPARQL graph database.
 
-## Generating your own bringup package
+ 📖 **Full documentation**: [https://kas-lab.github.io/triplestar_kb](https://kas-lab.github.io/triplestar_kb) 
 
-To generate your own bringup package, run the following command from your `/src` folder (assuming that's where you cloned this repo). Make sure to replace `{your_custom_bringup_name}` with the actual name you want for your package (e.g., `my_custom_triplestar_bringup`):
+## Quick Start
+
+### Repo and dependencies
+
+First, clone the current repo into the `src` folder of your ROS2 workspace.
+```bash
+cd src
+git clone https://github.com/kas-lab/triplestar_kb.git 
+cd ..
+```
+
+Secondly, install the needed dependencies via rosdep:
+```bash
+rosdep install -i --from-path src/triplestar_kb -r -y
+```
+
+### Generate your own bringup package
+
+*TriplestarKB* is configured on a per-scenario basis using _bringup packages_. 
+To generate a new bringup package, run the following from your sourced workspace:
+```bash
+ros2 triplestar bringup new
+```
+You will be prompted for the package name. To skip the prompt, pass it with
+`--name`:
+```bash
+ros2 triplestar bringup new --name my_bringup
+```
+
+The generated package is placed in the `src/` folder of the active colcon
+workspace automatically. To write somewhere other than the workspace `src/`,
+pass `--output-dir`:
+```bash
+ros2 triplestar bringup new --name my_bringup --output-dir /path/to/dir
+```
+
+### Build the package
 
 ```bash
-copier copy triplestar_kb/bringup_template {your_custom_bringup_name}
+colcon build --symlink-install --merge-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --packages-select {your_custom_bringup_name}
 ```
 
-## ROS to RDF conversions
+### Running
 
-ROS(2) defines its own set of interfaces (messages and services) for representing data like timestamps, points, integers, floats, polygons etc.
-To facilitate the integration of these datatypes into the kb, which is based on RDF, these types need to be converted to suitable RDF types.
-
-| ROS msg type                                                                           | Python / Shapely type      | RDF literal type |
-| -------------------------------------------------------------------------------------- | -------------------------- | ---------------- |
-| `geometry_msgs/Point`, `Point32`, `PointStamped`                                       | `shapely.geometry.Point`   | `geo:wktLiteral` |
-| `geometry_msgs/Pose`                                                                   | `shapely.geometry.Point`   | `geo:wktLiteral` |
-| `geometry_msgs/Vector3`, `Vector3Stamped`                                              | `shapely.geometry.Point`   | `geo:wktLiteral` |
-| `geometry_msgs/Polygon`, `PolygonStamped`, `PolygonInstance`, `PolygonInstanceStamped` | `shapely.geometry.Polygon` | `geo:wktLiteral` |
-| `builtin_interfaces/Time`                                                              | `datetime.datetime`        | `xsd:dateTime`   |
-| `std_msgs/Float32`, `Float64`                                                          | `float`                    | `xsd:float`      |
-| `std_msgs/Int8`, `Int16`, `Int32`, `Int64`                                             | `int`                      | `xsd:integer`    |
-| `std_msgs/UInt8`, `UInt16`, `UInt32`, `UInt64`                                         | `int`                      | `xsd:integer`    |
-| `std_msgs/Char`, `Byte`                                                                | `int`                      | `xsd:integer`    |
-| `std_msgs/Bool`                                                                        | `bool`                     | `xsd:boolean`    |
-| `std_msgs/String`                                                                      | `str`                      | `xsd:string`     |
-
-## Query-time subscribers
-
-Some data, such as room geometries or class hirarchies, will be quite static in your KB, while other data, such as the robots own location or battery level, will change frequently.
-For this requently-chaning information it is possible to add _query_time_subscribers_ to the kb node, which keep track of the messages published on a certain topic and expose them to oxigraph's underlying SPARQL evaluator to be run at query time.
-As an example:
-
-```sparql
-PREFIX ex: <http://example.org/>
-SELECT ?bl WHERE {
-  BIND(ex:robotBatteryLevel() AS ?bl) .
-  FILTER(?bl > 0.2)
-}
+After sourcing the workspace, run triplestar with your custom config using:
+```bash
+ros2 triplestar bringup launch {your_custom_brigup_name}
 ```
 
-This query contains the special function `robotBatteryLevel`, which accesses the latest message on a certain topic at query time.
-These query time subscribers can be added by modifying the config file.
+> :info: As seen in the above snippets, the `triplestar` cli provides convenient commands for common operations.
 
-## Query-time TF subscribers
 
-ROS(2) makes use of the `tf2` library to publish transforms between coordinate frames
+## Develop with pixi
+
+[pixi](https://pixi.sh) sets up ROS 2 Jazzy and all dependencies from
+[RoboStack](https://robostack.github.io) inside the checkout, without a system ROS
+install or a container. `pixi.lock` pins the environment for `linux-64`,
+`linux-aarch64` and `osx-arm64`.
+
+```bash
+curl -fsSL https://pixi.sh/install.sh | sh  # install pixi once
+pixi install                                # create the environment in .pixi/
+pixi run build                              # colcon build into build/, install/, log/
+pixi run test                               # run all package tests
+```
+
+The checkout is its own colcon workspace, so every clone or git worktree builds in
+isolation. To run the node, generate a bringup package in the checkout and launch it
+(`launch` rebuilds first):
+
+```bash
+pixi run ros2 triplestar bringup new --name my_bringup
+pixi run launch my_bringup
+```
+
+`pixi shell` opens a shell with ROS and the built packages sourced, for commands like
+`ros2 triplestar query list`; after building inside it, run
+`source install/local_setup.bash` to pick up new packages. Do not source an
+apt-installed ROS `setup.bash` in that shell. Give each checkout its own
+`ROS_DOMAIN_ID` when running several side by side.
+
+
+## Contributing
+
+Contributions are welcome. Please install [pre-commit](https://pre-commit.com/)
+and enable the hooks once:
+
+    pip install pre-commit
+    pre-commit install
+
+This runs ruff (lint + format) automatically on every commit.
 
 - _Pellissier Tanon, T._ (n.d.). **Oxigraph**. [![DOI:10.5281/zenodo.7408022](https://zenodo.org/badge/DOI/10.5281/zenodo.7408022.svg)](https://doi.org/10.5281/zenodo.7408022)
 

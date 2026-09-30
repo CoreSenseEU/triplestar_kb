@@ -1,14 +1,12 @@
 from pathlib import Path
-from typing import Optional
 
-import rclpy
 from PIL import Image as PILImage
 from pyoxigraph import Store
+import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from triplestar_msgs.srv import SetVizQuery
-
 from triplestar_viz.core import RDFStarVisualizer
 
 
@@ -128,7 +126,7 @@ class KBVisualizerNode(Node):
         except Exception as e:
             self.get_logger().error(f'Failed to access readonly store at {self.store_path}: {e}')
 
-    def generate_and_publish_visualization(self, query: Optional[str] = None):
+    def generate_and_publish_visualization(self, query: str | None = None):
         self.get_logger().info('--- Generating visualization ---')
 
         if not self.store:

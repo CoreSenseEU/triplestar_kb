@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>triplestar_core</name>
-  <version>0.0.0</version>
+  <version>0.1.0</version>
   <description>Core TripleStarKB Package</description>
   <maintainer email="derijkmarijn00@gmail.com">marijn</maintainer>
   <license>Apache-2.0</license>
@@ -20,10 +20,17 @@
 
   <!-- Python dependencies -->
   <depend>python3-jinja2</depend>
+  <depend>python3-oxrdflib-pip</depend>
   <depend>python3-pydantic</depend>
-  <depend>python3-yaml</depend>
+  <depend>python3-pyoxigraph-pip</depend>
+  <depend>python3-rdflib</depend>
+  <depend>python3-reasonable-pip</depend>
   <depend>python3-shapely</depend>
+  <depend>python3-yaml</depend>
+  <depend>python3-opentelemetry-api-pip</depend>
 
+
+  <test_depend>python3-opentelemetry-sdk-pip</test_depend>
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

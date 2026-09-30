@@ -6,11 +6,11 @@ This tool provides a standalone CLI for visualizing RDF graphs without needing R
 """
 
 import argparse
-import sys
 from pathlib import Path
-from typing import Optional
+import sys
 
-from triplestar_viz.core import RDFLoader, RDFStarVisualizer
+from triplestar_viz.core import RDFLoader
+from triplestar_viz.core import RDFStarVisualizer
 
 
 def infer_format_from_extension(path: Path) -> str:
@@ -40,7 +40,7 @@ def infer_output_format(path: Path) -> str:
 
 
 def main():
-    """Main CLI entry point."""
+    """Run the RDF-star visualizer command line interface."""
     parser = argparse.ArgumentParser(
         description='Visualize RDF* graphs using Graphviz',
         epilog="""
@@ -165,7 +165,7 @@ Examples:
             print(f'  Loaded {quad_count} quads')
 
         # Load query if provided
-        query: Optional[str] = None
+        query: str | None = None
         if args.query:
             if args.verbose:
                 print(f'Loading query from: {args.query}')

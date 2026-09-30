@@ -1,8 +1,13 @@
 import hashlib
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from graphviz import Digraph
-from pyoxigraph import BlankNode, Literal, NamedNode, Quad, Store, Triple
+from pyoxigraph import BlankNode
+from pyoxigraph import Literal
+from pyoxigraph import NamedNode
+from pyoxigraph import Quad
+from pyoxigraph import Store
+from pyoxigraph import Triple
 
 
 class RDFStarVisualizer:
@@ -57,21 +62,21 @@ class RDFStarVisualizer:
     def __init__(
         self,
         comment: str = 'RDF-star Graph',
-        format: str = 'PNG',
+        format: str = 'PNG',  # noqa: A002
         engine: str = 'sfdp',
-        styles: Optional[Dict[str, Dict[str, Any]]] = None,
-        prefixes: Optional[Dict[str, str]] = None,
+        styles: dict[str, dict[str, Any]] | None = None,
+        prefixes: dict[str, str] | None = None,
         show_legend: bool = True,
     ):
-        """Initialize the visualizer.
+        """
+        Initialize the visualizer.
 
-        Args:
-            comment: Comment for the graph
-            format: Output format (png, svg, etc.)
-            engine: Graphviz engine to use
-            styles: Custom styles dictionary to override defaults
-            prefixes: Custom prefixes dictionary (namespace -> prefix)
-            show_legend: Whether to show a legend with used prefixes
+        :param comment: Comment for the graph
+        :param format: Output format (png, svg, etc.)
+        :param engine: Graphviz engine to use
+        :param styles: Custom styles dictionary to override defaults
+        :param prefixes: Custom prefixes dictionary (namespace -> prefix)
+        :param show_legend: Whether to show a legend with used prefixes
         """
         self.comment = comment
         self.format = format
@@ -95,7 +100,7 @@ class RDFStarVisualizer:
         self._processed_nodes = set()
         self.used_prefixes = set()
 
-    def safe_id(self, value: Union[str, Any]) -> str:
+    def safe_id(self, value: str | Any) -> str:
         """Generate a safe node ID from any value."""
         return 'n' + hashlib.sha1(str(value).encode('utf-8')).hexdigest()
 
@@ -135,7 +140,8 @@ class RDFStarVisualizer:
                     namespace.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                 )
                 legend_rows.append(
-                    f'<TR><TD ALIGN="LEFT"><B>{prefix}:</B></TD><TD ALIGN="LEFT">{escaped_ns}</TD></TR>'
+                    f'<TR><TD ALIGN="LEFT"><B>{prefix}:</B></TD>'
+                    f'<TD ALIGN="LEFT">{escaped_ns}</TD></TR>'
                 )
 
             legend_html = f"""<
@@ -162,7 +168,7 @@ class RDFStarVisualizer:
             return str(lit.value)
 
     def add_node_if_needed(
-        self, node: Union[NamedNode, BlankNode, Literal, Triple], node_id: str
+        self, node: NamedNode | BlankNode | Literal | Triple, node_id: str
     ) -> bool:
         """Add a node if it hasn't been processed yet. Returns True if it's a star triple."""
         if node_id in self._processed_nodes:
@@ -224,8 +230,8 @@ class RDFStarVisualizer:
     def generate_visualization(
         self,
         store: Store,  # Use a read-only pyoxigraph store
-        query: Optional[str] = None,
-    ) -> Optional[bytes]:
+        query: str | None = None,
+    ) -> bytes | None:
         # Reset the graph and rebuild from scratch
         self._reset_graph()
 

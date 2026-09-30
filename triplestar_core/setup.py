@@ -1,9 +1,11 @@
-from setuptools import find_packages, setup
+from setuptools import find_packages
+from setuptools import setup
 
 package_name = 'triplestar_core'
+
 setup(
     name=package_name,
-    version='0.0.0',
+    version='0.1.0',
     packages=find_packages(exclude=['test', 'scripts', 'resource']),
     data_files=[
         (
@@ -13,7 +15,6 @@ setup(
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=[
-        'returns>=0.22.0',
         'shapely',
         'pyoxigraph',
         'reasonable',
@@ -21,19 +22,20 @@ setup(
         'pydantic',
         'jinja2',
         'pyyaml',
-        'copier',
     ],
     zip_safe=True,
     maintainer='marijn',
     maintainer_email='derijkmarijn00@gmail.com',
     description='TODO: Package description',
     license='Apache-2.0',
-    tests_require=['pytest'],
+    extras_require={
+        'test': [
+            'pytest',
+        ],
+    },
     entry_points={
         'console_scripts': [
-            'kb_node = triplestar_core.kb_node:main',
-            'kb_marker_publisher = triplestar_core.kb_marker_publisher:main',
-            'query_kb = scripts.query_kb:main',
+            'triplestar_kb_node = triplestar_core.main:main',
         ],
     },
 )
