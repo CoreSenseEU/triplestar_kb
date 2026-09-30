@@ -9,6 +9,10 @@
 
   <depend>rclpy</depend>
   <depend>ros2cli</depend>
+  <depend>ros2launch</depend>
+  <depend>ros2service</depend>
+  <depend>rosidl_runtime_py</depend>
+  <depend>lifecycle_msgs</depend>
   <depend>triplestar_msgs</depend>
   <depend>triplestar_bringup</depend>
   <depend>triplestar_core</depend>
