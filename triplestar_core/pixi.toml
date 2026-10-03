@@ -1,0 +1,24 @@
+# Package manifest for Pixi: builds this ROS 2 package as a conda package.
+# Name, version and dependencies come from package.xml. See the CoreSense
+# guide: https://coresenseeu.github.io/tutorials/docs/pixi_release.html
+[package]
+publish = true
+
+[package.build.backend]
+name = "pixi-build-ros"
+workspace = true
+
+# rosdep keys from package.xml that the backend's RoboStack mapping does not
+# know, mapped to their conda-forge names.
+[[package.build.config.extra-package-mappings]]
+python3-oxrdflib-pip = { conda = ["oxrdflib"] }
+python3-rdflib = { conda = ["rdflib"] }
+python3-pyoxigraph-pip = { conda = ["pyoxigraph"] }
+python3-reasonable-pip = { conda = ["reasonable"] }
+python3-opentelemetry-api-pip = { conda = ["opentelemetry-api"] }
+python3-opentelemetry-sdk-pip = { conda = ["opentelemetry-sdk"] }
+
+# python3-pydantic resolves to pydantic 1.10 on Ubuntu Noble, the Jazzy apt
+# target; keep the same major version (see the workspace pixi.toml).
+[package.run-dependencies]
+pydantic = "1.10.*"
